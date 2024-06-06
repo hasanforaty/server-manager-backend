@@ -42,7 +42,6 @@ class DBService(models.Model):
 
 class Action(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True)
-    servers = models.ManyToManyField(to=Server, blank=True)
     command = models.TextField()
     onSuccess = models.TextField()
     onError = models.TextField()

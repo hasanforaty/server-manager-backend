@@ -3,17 +3,49 @@ from rest_framework import serializers
 from server.models import Server, Service, DBService, Action
 
 
-class ServerSerializer(serializers.ModelSerializer):
+class ActionSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Server
+        model = Action
         fields = '__all__'
         read_only_fields = ['id', ]
+
+
+class ServerSerializer(serializers.ModelSerializer):
+    actions = ActionSerializer(
+        many=True,
+        required=False
+    )
+
+    class Meta:
+        model = Server
+        fields = ('id', 'name', 'host', 'port', 'username', 'password', 'actions')
+        read_only_fields = ['id', ]
+
+    def addOrCreateAction(self, instance, actions):
+        for action in actions:
+            actionObject, created = Action.objects.get_or_create(action)
+            instance.actions.add(actionObject)
+
+    def create(self, validated_data):
+        action = validated_data.pop('actions', [])
+        server = Server.objects.create(**validated_data)
+        self.addOrCreateAction(server, action)
+        return server
+
+    def update(self, instance, validated_data):
+        action = validated_data.pop('actions', [])
+        if action is not None:
+            instance.actions.clear()
+            self.addOrCreateAction(instance, action)
+        for att, value in validated_data.items():
+            setattr(instance, att, value)
+        instance.save()
+        return instance
 
 
 class ServiceSerializer(serializers.ModelSerializer):
     Server = ServerSerializer(
         required=True,
-
     )
 
     class Meta:
@@ -32,35 +64,3 @@ class DBServiceSerializer(serializers.ModelSerializer):
         model = DBService
         fields = '__all__'
         read_only_fields = ['id', ]
-
-
-class ActionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Action
-        fields = '__all__'
-        read_only_fields = ['id', ]
-
-    def _createdServer(self, instance, servers):
-        for server in servers:
-            serverObj, created = Server.objects.get_or_create(server)
-            instance.servers.add(serverObj)
-            serverObj.actions.add(instance)
-
-    def create(self, validated_data):
-        servers = validated_data.pop('servers', [])
-
-        action = Action.objects.create(**validated_data)
-        self._createdServer(action, servers)
-
-        return action
-
-    def update(self, instance, validated_data):
-        servers = validated_data.pop('servers', [])
-
-        if servers is not None:
-            instance.servers.clear()
-            self._createdServer(instance, servers)
-        for att, value in validated_data.items():
-            setattr(instance, att, value)
-        instance.save()
-        return instance
