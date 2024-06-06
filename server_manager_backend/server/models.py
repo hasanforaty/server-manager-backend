@@ -5,12 +5,12 @@ from django.db import models
 
 class Server(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True)
-    name = models.CharField()
-    host = models.CharField()
+    name = models.CharField(max_length=32)
+    host = models.CharField(max_length=32)
     port = models.IntegerField()
-    username = models.CharField()
-    password = models.CharField()
-    actions = models.ManyToManyField(to='Action', blank=True, on_delete=models.SET_NULL, )
+    username = models.CharField(max_length=32)
+    password = models.CharField(max_length=64)
+    actions = models.ManyToManyField(to='Action', blank=True, )
 
     def __str__(self):
         return self.name + " - " + self.host + " - " + self.username
@@ -18,8 +18,8 @@ class Server(models.Model):
 
 class Service(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True)
-    server = models.ForeignKey(Server, on_delete=models.SET_NULL)
-    name = models.CharField()
+    server = models.ForeignKey(Server, on_delete=models.SET_NULL, null=True)
+    name = models.CharField(max_length=32)
     command = models.TextField()
 
     def __str__(self):
@@ -28,12 +28,12 @@ class Service(models.Model):
 
 class DBService(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True)
-    server = models.ForeignKey(Server, on_delete=models.SET_NULL)
-    name = models.CharField()
-    host = models.CharField()
+    server = models.ForeignKey(Server, on_delete=models.SET_NULL, null=True)
+    name = models.CharField(max_length=32)
+    host = models.CharField(max_length=32)
     port = models.IntegerField()
-    username = models.CharField()
-    password = models.CharField()
+    username = models.CharField(max_length=32)
+    password = models.CharField(max_length=64)
     backup = models.BooleanField()
 
     def __str__(self):
@@ -42,7 +42,7 @@ class DBService(models.Model):
 
 class Action(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True)
-    server = models.ManyToManyField(to=Server, on_delete=models.SET_NULL, blank=True)
+    servers = models.ManyToManyField(to=Server, blank=True)
     command = models.TextField()
     onSuccess = models.TextField()
     onError = models.TextField()
