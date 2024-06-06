@@ -44,23 +44,24 @@ class ServerSerializer(serializers.ModelSerializer):
 
 
 class ServiceSerializer(serializers.ModelSerializer):
-    Server = ServerSerializer(
+    server = serializers.PrimaryKeyRelatedField(
+        queryset=Server.objects.all(),
         required=True,
     )
 
     class Meta:
         model = Service
         fields = '__all__'
-        read_only_fields = ['id', ]
+        read_only_fields = ['id', 'server']
 
 
 class DBServiceSerializer(serializers.ModelSerializer):
-    Server = ServerSerializer(
-        required=True,
-
+    server = serializers.PrimaryKeyRelatedField(
+        queryset=DBService.objects.all(),
+        required=True
     )
 
     class Meta:
         model = DBService
         fields = '__all__'
-        read_only_fields = ['id', ]
+        read_only_fields = ['id', 'server']

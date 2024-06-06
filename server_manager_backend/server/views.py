@@ -1,8 +1,8 @@
 from django.shortcuts import render
 from rest_framework import viewsets, mixins
 
-from server.models import Server, Action
-from server.serializers import ServerSerializer, ActionSerializer
+from server.models import Server, Action, Service, DBService
+from server.serializers import ServerSerializer, ActionSerializer, ServiceSerializer, DBServiceSerializer
 
 
 # Create your views here.
@@ -29,3 +29,27 @@ class ActionsViewSet(
 ):
     queryset = Action.objects.all()
     serializer_class = ActionSerializer
+
+
+class ServiceViewSet(
+    viewsets.GenericViewSet,
+    mixins.CreateModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    mixins.ListModelMixin,
+):
+    queryset = Service.objects.all()
+    serializer_class = ServiceSerializer
+
+
+class DBServiceViewSet(
+    viewsets.GenericViewSet,
+    mixins.CreateModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    mixins.ListModelMixin,
+):
+    queryset = DBService.objects.all()
+    serializer_class = DBServiceSerializer
