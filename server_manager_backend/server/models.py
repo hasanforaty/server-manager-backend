@@ -21,7 +21,7 @@ class Service(models.Model):
     server = models.ForeignKey(Server, on_delete=models.SET_NULL, null=True)
     name = models.CharField(max_length=32)
     command = models.TextField()
-    onSuccess = models.TextField()
+    contain = models.TextField()
 
     def __str__(self):
         return self.id + ' - ' + self.server.name + ' - ' + self.command

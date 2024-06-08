@@ -5,6 +5,7 @@ from django.db import models
 from django.forms import JSONField
 
 from server.models import Action, Server, Service, DBService
+from backup.models import FolderBackup
 
 
 class ActionHistory(models.Model):
@@ -40,3 +41,16 @@ class ServiceHistory(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
+
+class BackupHistory(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    status = models.BooleanField(default=False)
+    service = models.ForeignKey(DBService, blank=True, null=True, on_delete=models.SET_NULL)
+    folder = models.ForeignKey(FolderBackup, blank=True, null=True, on_delete=models.SET_NULL)
+    type = models.CharField(max_length=32, choices=(('backup', 'Backup'), ('folder', 'Folder')))
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return (self.id + " : " + self.type + "(" + str(
+            self.created_at) + ")" + self.service +
+                self.folder + " status :" + self.status)
