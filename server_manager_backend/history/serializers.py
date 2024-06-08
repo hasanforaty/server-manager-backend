@@ -1,7 +1,8 @@
 from rest_framework import serializers
 
-from history.models import ActionHistory, ServerInfo, ServiceHistory
+from history.models import ActionHistory, ServerInfo, ServiceHistory, BackupHistory
 from server.serializers import ActionSerializer, ServerSerializer, ServiceSerializer, DBServiceSerializer
+from backup.serializers import BackupSerializer
 
 
 class ActionHistorySerializer(serializers.ModelSerializer):
@@ -99,4 +100,25 @@ class ServiceDBHistorySerializer(serializers.ModelSerializer):
             'type',
             'created_at',
             'status'
+        ]
+
+
+class BackupHistorySerializer(serializers.ModelSerializer):
+    service = DBServiceSerializer(
+        read_only=True,
+        required=False,
+    )
+    folder = BackupSerializer(
+        required=False
+    )
+
+    class Meta:
+        model = BackupHistory
+        fields = [
+            'id',
+            'status',
+            'service',
+            'folder',
+            'type',
+            'created_at',
         ]

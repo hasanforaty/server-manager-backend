@@ -1,8 +1,9 @@
 from django.core.exceptions import BadRequest, ValidationError
 from rest_framework import mixins, viewsets
 from rest_framework.exceptions import ValidationError
-from history.models import ActionHistory, ServerInfo, ServiceHistory
-from history.serializers import ActionHistorySerializer, ServerInfoSerializer, ServiceHistorySerializer
+from history.models import ActionHistory, ServerInfo, ServiceHistory, BackupHistory
+from history.serializers import ActionHistorySerializer, ServerInfoSerializer, ServiceHistorySerializer, \
+    BackupHistorySerializer
 
 from drf_spectacular.utils import (
     extend_schema_view,
@@ -123,6 +124,52 @@ class ServiceHistoryViewSet(
                 queryset = queryset.filter(service_id=service)
             if serviceDB is not None:
                 queryset = queryset.filter(serviceDB_id=serviceDB)
+            if serviceDB is not None and service is not None:
+                raise ValidationError("serviceDB and service can't both be asked")
+        except Exception as ex:
+            raise ValidationError(ex)
+        return queryset
+
+
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='service',
+                type=OpenApiTypes.UUID,
+                description="id of DB's service backup",
+                required=False,
+                location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name='folder',
+                type=OpenApiTypes.UUID,
+                description="id of folder backup",
+                required=False,
+                location=OpenApiParameter.QUERY,
+            ),
+        ]
+    )
+)
+class BackupHistoryViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    viewsets.GenericViewSet
+):
+    queryset = BackupHistory.objects.all()
+    serializer_class = BackupHistorySerializer
+
+    def get_queryset(self):
+        queryset = BackupHistory.objects.all()
+        service = self.request.query_params.get('service')
+        folder = self.request.query_params.get('folder')
+        try:
+            if service is not None:
+                queryset = queryset.filter(service_id=service)
+            if folder is not None:
+                queryset = queryset.filter(folder_id=folder)
+            if folder is not None and service is not None:
+                raise ValidationError("folder and service can't both be asked")
         except Exception as ex:
             raise ValidationError(ex)
         return queryset
