@@ -1,3 +1,16 @@
-from django.shortcuts import render
+from rest_framework import mixins, viewsets
 
-# Create your views here.
+from backup.serializers import BackupSerializer
+from backup.models import FolderBackup
+
+
+class FolderBackupViewSet(
+    mixins.CreateModelMixin,
+    mixins.DestroyModelMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    viewsets.GenericViewSet
+):
+    serializer_class = BackupSerializer
+    queryset = FolderBackup.objects.all()
+

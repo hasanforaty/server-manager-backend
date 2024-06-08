@@ -15,6 +15,8 @@ RUN python -m venv /env && \
     apk add --update --no-cache postgresql-client && \
     apk add --update --no-cache --virtual .tmp-build-deps \
         build-base postgresql-dev musl-dev && \
+    apk add gcc  python3-dev libffi-dev openssl-dev cargo pkgconfig && \
+    /env/bin/pip install cryptography && \
     /env/bin/pip install -r /tmp/requirements.txt && \
     if [ $DEV = 'true' ] ; \
         then /env/bin/pip install -r /tmp/requirements.dev.txt ; \
