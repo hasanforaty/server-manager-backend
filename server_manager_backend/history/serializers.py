@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
-from history.models import ActionHistory, ServerInfo
-from server.serializers import ActionSerializer, ServerSerializer
+from history.models import ActionHistory, ServerInfo, ServiceHistory
+from server.serializers import ActionSerializer, ServerSerializer, ServiceSerializer, DBServiceSerializer
 
 
 class ActionHistorySerializer(serializers.ModelSerializer):
@@ -48,3 +48,55 @@ class ServerInfoSerializer(serializers.ModelSerializer):
         return fields
 
 
+class ServiceHistorySerializer(serializers.ModelSerializer):
+    service = ServiceSerializer(
+        read_only=True,
+        required=False,
+    )
+    serviceDB = DBServiceSerializer(
+        read_only=True,
+        required=False,
+    )
+
+    class Meta:
+        model = ServiceHistory
+        fields = [
+            'id',
+            'service',
+            'serviceDB',
+            'type',
+            'created_at',
+            'status',
+        ]
+
+
+class ServiceServerHistorySerializer(serializers.ModelSerializer):
+    service = ServiceSerializer(
+        read_only=True
+    )
+
+    class Meta:
+        model = ServiceHistory
+        fields = [
+            'id',
+            'service',
+            'type',
+            'created_at',
+            'status',
+        ]
+
+
+class ServiceDBHistorySerializer(serializers.ModelSerializer):
+    serviceDB = DBServiceSerializer(
+        read_only=True
+    )
+
+    class Meta:
+        model = ServiceHistory
+        fields = [
+            'id',
+            'serviceDB',
+            'type',
+            'created_at',
+            'status'
+        ]

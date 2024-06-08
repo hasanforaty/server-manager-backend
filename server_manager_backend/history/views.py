@@ -1,8 +1,8 @@
 from django.core.exceptions import BadRequest, ValidationError
 from rest_framework import mixins, viewsets
 from rest_framework.exceptions import ValidationError
-from history.models import ActionHistory, ServerInfo
-from history.serializers import ActionHistorySerializer, ServerInfoSerializer
+from history.models import ActionHistory, ServerInfo, ServiceHistory
+from history.serializers import ActionHistorySerializer, ServerInfoSerializer, ServiceHistorySerializer
 
 from drf_spectacular.utils import (
     extend_schema_view,
@@ -17,14 +17,14 @@ from drf_spectacular.utils import (
         parameters=[
             OpenApiParameter(
                 name='server',
-                type=OpenApiTypes.STR,
+                type=OpenApiTypes.UUID,
                 description='id of the server ',
                 required=False,
                 location=OpenApiParameter.QUERY,
             ),
             OpenApiParameter(
                 name='action',
-                type=OpenApiTypes.STR,
+                type=OpenApiTypes.UUID,
                 description='id of the action in history',
                 required=False,
                 location=OpenApiParameter.QUERY,
@@ -59,7 +59,7 @@ class ActionHistoryViewSet(
         parameters=[
             OpenApiParameter(
                 name='server',
-                type=OpenApiTypes.STR,
+                type=OpenApiTypes.UUID,
                 description='id of the server ',
                 required=False,
                 location=OpenApiParameter.QUERY,
@@ -83,4 +83,46 @@ class ServerInfoViewSet(
                 queryset = queryset.filter(server_id=server)
             except Exception as er:
                 raise ValidationError(er)
+        return queryset
+
+
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='service',
+                type=OpenApiTypes.UUID,
+                description="id of server's Service",
+                required=False,
+                location=OpenApiParameter.QUERY,
+            ),
+            OpenApiParameter(
+                name='serviceDB',
+                type=OpenApiTypes.UUID,
+                description="id of database's Service",
+                required=False,
+                location=OpenApiParameter.QUERY,
+            ),
+        ]
+    )
+)
+class ServiceHistoryViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    viewsets.GenericViewSet
+):
+    queryset = ServiceHistory.objects.all()
+    serializer_class = ServiceHistorySerializer
+
+    def get_queryset(self):
+        queryset = ServiceHistory.objects.all()
+        service = self.request.query_params.get('service')
+        serviceDB = self.request.query_params.get('serviceDB')
+        try:
+            if service is not None:
+                queryset = queryset.filter(service_id=service)
+            if serviceDB is not None:
+                queryset = queryset.filter(serviceDB_id=serviceDB)
+        except Exception as ex:
+            raise ValidationError(ex)
         return queryset

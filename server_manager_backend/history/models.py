@@ -39,6 +39,7 @@ class ServiceHistory(models.Model):
         choices=TYPE_CHOICES,
         max_length=32,
     )
+    status = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
 
