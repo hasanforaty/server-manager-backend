@@ -12,7 +12,7 @@ class ActionHistory(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, auto_created=True)
     action = models.ForeignKey(Action, on_delete=models.SET_NULL, null=True)
     server = models.ForeignKey(Server, on_delete=models.SET_NULL, null=True, )
-    log = JSONField()
+    log = models.JSONField(null=True, blank=True, default=dict)
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.BooleanField(default=False)
 
