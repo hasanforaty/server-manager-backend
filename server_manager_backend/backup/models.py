@@ -11,4 +11,3 @@ class FolderBackup(models.Model):
     destination = models.TextField()
     server = models.ForeignKey(Server, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
