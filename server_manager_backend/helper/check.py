@@ -1,7 +1,9 @@
-import paramiko
-from sshtunnel import SSHTunnelForwarder
-import psycopg2 as db
 import pandas as pd
+import psycopg2 as db
+from sshtunnel import SSHTunnelForwarder
+import datetime
+
+import cache_connection as ca
 
 
 class CheckServer:
@@ -13,13 +15,8 @@ class CheckServer:
 
     def check_server(self):
         try:
-            with SSHTunnelForwarder(
-                    (self.host, self.port),
-                    ssh_username=self.username,
-                    ssh_password=self.password,
-                    remote_bind_address=('localhost', 5432)
-            ) as server:
-                return True
+            ca.getOrCreateConnection(self.host, port=self.port, username=self.username, password=self.password)
+            return True
         except BaseException as ex:
             return False
 
@@ -43,20 +40,32 @@ class CheckServer:
             return False
 
     def getServerInfo(self):
-        client = paramiko.SSHClient()
-        try:
-            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            client.connect(self.host, port=self.port, username=self.username, password=self.password)
-            cpu = self._getCPU(client)
-            memory = self._getMemory(client)
-            ram = self._getRAM(client)
-            client.close()
-        finally:
-            client.close()
+        client = ca.getOrCreateConnection(self.host, port=self.port, username=self.username, password=self.password)
+        cpu = self._getCPU(client)
+        memory = self._getMemory(client)
+        ram = self._getRAM(client)
         return {
             'cpu': cpu,
             'memory': memory,
             'ram': ram
+        }
+
+    def checkByCommand(self, command, contain):
+        connection = ca.getOrCreateConnection(self.host, port=self.port, username=self.username, password=self.password)
+        stdin, stdout, stderr = connection.exec_command(command)
+        success = False
+        output = ''
+        for line in stdout:
+            output += line
+        if contain.lower() in output.lower():
+            success = True
+        else:
+            success = False
+        return {
+            'success': success,
+            'command': command,
+            'log': output,
+            'date': datetime.datetime.now()
         }
 
     def _getCPU(self, connection):
