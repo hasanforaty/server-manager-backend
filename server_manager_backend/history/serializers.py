@@ -40,7 +40,7 @@ class ServerInfoSerializer(serializers.ModelSerializer):
     class Meta:
         model = ServerInfo
         fields = ['id', 'server', 'created_at', 'cpu', 'ram', 'memory']
-        read_only = ['server', 'created_at',]
+        read_only = ['server', 'created_at', ]
 
     # def get_fields(self, *args, **kwargs):
     #     """Make all field read-only"""
@@ -70,6 +70,7 @@ class ServiceHistorySerializer(serializers.ModelSerializer):
             'created_at',
             'status',
         ]
+        read_only = ['service', 'created_at', 'serviceDB']
 
 
 class ServiceServerHistorySerializer(serializers.ModelSerializer):

@@ -57,7 +57,7 @@ class ServiceSerializer(serializers.ModelSerializer):
 
 class DBServiceSerializer(serializers.ModelSerializer):
     server = serializers.PrimaryKeyRelatedField(
-        queryset=DBService.objects.all(),
+        queryset=Server.objects.all(),
         required=True
     )
 

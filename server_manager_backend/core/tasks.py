@@ -3,11 +3,11 @@ import time
 import datetime
 
 from schedule import Scheduler
-from server.models import Server
-from server.serializers import ServerSerializer
+from server.models import Server, Service, DBService
+from server.serializers import ServerSerializer, DBServiceSerializer
 from helper import check
 from history.models import ServerInfo
-from history.serializers import ServerInfoSerializer
+from history.serializers import ServerInfoSerializer, ServiceHistorySerializer
 
 
 def run_continuously(self, interval=1):
@@ -50,32 +50,82 @@ def start_scheduler():
     # )
     # check_server.check_server()
     scheduler = Scheduler()
-    scheduler.every(4).seconds.do(check_servers_info)
+    scheduler.every(4).seconds.do(check_servers)
     scheduler.run_continuously()
 
 
-def check_servers_info():
+def check_servers():
     threads = []
     servers = ServerSerializer(Server.objects.all(), many=True).data
     for value in servers:
-        thread = threading.Thread(target=check_server_info, args=(value['id'],))
+        thread = threading.Thread(target=check_server, args=(value['id'],))
         threads.append(thread)
         thread.start()
     for thread in threads:
         thread.join()
 
 
-def check_server_info(server_id):
+def check_server(server_id):
     print('start at :', datetime.datetime.now())
+    threads = []
     server = Server.objects.get(id=server_id)
     server_serializer = ServerSerializer(server).data
-    check_server = check.CheckServer(
+    s_thread = threading.Thread(target=check_server_info, args=(server_id,))
+    threads.append(s_thread)
+    s_thread.start()
+
+    actions = server_serializer['actions']
+    dbServices = DBService.objects.filter(server_id=server_id).all()
+    db_serializer = DBServiceSerializer(dbServices, many=True).data
+    for db in db_serializer:
+        thread = threading.Thread(target=check_db, args=(db['id'],))
+        threads.append(thread)
+        thread.start()
+
+    for thread in threads:
+        thread.join()
+    print('finished test at ', datetime.datetime.now())
+
+
+def check_db(db_id):
+    service = DBService.objects.get(id=db_id)
+    db_serializer = DBServiceSerializer(service).data
+    server = Server.objects.get(id=service.server_id)
+    server_serializer = ServerSerializer(server).data
+    checked_server = check.CheckServer(
         host=server_serializer['host'],
         port=server_serializer['port'],
         username=server_serializer['username'],
         password=server_serializer['password']
     )
-    info = check_server.getServerInfo()
+    checked = checked_server.check_database(
+        database_name=db_serializer['name'],
+        username=db_serializer['username'],
+        password=db_serializer['password']
+    )
+    data = {
+        'status': checked,
+        'type': "service",
+    }
+    serializer = ServiceHistorySerializer(data=data)
+    if serializer.is_valid():
+        serializer.save(
+            serviceDB=service
+        )
+    else:
+        print(serializer.errors)
+
+
+def check_server_info(server_id):
+    server = Server.objects.get(id=server_id)
+    server_serializer = ServerSerializer(server).data
+    checked_server = check.CheckServer(
+        host=server_serializer['host'],
+        port=server_serializer['port'],
+        username=server_serializer['username'],
+        password=server_serializer['password']
+    )
+    info = checked_server.getServerInfo()
     created_at = datetime.datetime.now()
     cpu = round(info.get('cpu'))
     memory = round(info.get('memory'))
@@ -85,9 +135,8 @@ def check_server_info(server_id):
     data['cpu'] = cpu
     data['memory'] = memory
     data['ram'] = ram
-    serializer = ServerInfoSerializer(data=data,)
+    serializer = ServerInfoSerializer(data=data, )
     if serializer.is_valid():
         serializer.save(server=server)
     else:
         print(serializer.errors)
-    print('finished test at ', datetime.datetime.now())
