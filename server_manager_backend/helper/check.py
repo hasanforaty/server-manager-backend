@@ -3,7 +3,7 @@ import psycopg2 as db
 from sshtunnel import SSHTunnelForwarder
 import datetime
 
-import cache_connection as ca
+import helper.cache_connection as ca
 
 
 class CheckServer:
