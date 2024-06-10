@@ -70,6 +70,10 @@ class CheckServer:
 
     def _getCPU(self, connection):
         stdin, stdout, stderr = connection.exec_command("""iostat -c""")
+        """
+        avg-cpu:  %user   %nice %system %iowait  %steal   %idle
+                   0.46    0.03    0.16    0.04    0.00   99.30
+        """
         responses = []
         for line in stdout:
             result = line.strip('\n')
@@ -79,7 +83,7 @@ class CheckServer:
             if 'avg' in responses[i]:
                 index = i
         split = responses[index + 1].split()
-        return float(split[len(split) - 1])
+        return 100 - float(split[len(split) - 1])
 
     def _getRAM(self, connection):
         stdin, stdout, stderr = connection.exec_command("""free -m""")

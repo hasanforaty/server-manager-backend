@@ -40,13 +40,14 @@ class ServerInfoSerializer(serializers.ModelSerializer):
     class Meta:
         model = ServerInfo
         fields = ['id', 'server', 'created_at', 'cpu', 'ram', 'memory']
+        read_only = ['server', 'created_at',]
 
-    def get_fields(self, *args, **kwargs):
-        """Make all field read-only"""
-        fields = super().get_fields()
-        for field in fields.values():
-            field.read_only = True
-        return fields
+    # def get_fields(self, *args, **kwargs):
+    #     """Make all field read-only"""
+    #     fields = super().get_fields()
+    #     for field in fields.values():
+    #         field.read_only = True
+    #     return fields
 
 
 class ServiceHistorySerializer(serializers.ModelSerializer):

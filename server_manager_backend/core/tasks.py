@@ -7,6 +7,7 @@ from server.models import Server
 from server.serializers import ServerSerializer
 from helper import check
 from history.models import ServerInfo
+from history.serializers import ServerInfoSerializer
 
 
 def run_continuously(self, interval=1):
@@ -49,44 +50,44 @@ def start_scheduler():
     # )
     # check_server.check_server()
     scheduler = Scheduler()
-    scheduler.every(4).seconds.do(test)
+    scheduler.every(4).seconds.do(check_servers_info)
     scheduler.run_continuously()
 
 
-host = '85.185.122.28'
-port = 2233
-username = 'root'
-password = 'Bis0nRid3r'
-
-
-def test():
-    print('start at :', datetime.datetime.now())
+def check_servers_info():
     threads = []
     servers = ServerSerializer(Server.objects.all(), many=True).data
     for value in servers:
-        thread = threading.Thread(target=testInner, args=(value['id'],))
+        thread = threading.Thread(target=check_server_info, args=(value['id'],))
         threads.append(thread)
         thread.start()
     for thread in threads:
         thread.join()
-    print('finished test at ', datetime.datetime.now())
 
 
-def testInner(value):
-    # check_server = check.CheckServer(
-    #     host=host,
-    #     port=port,
-    #     username=username,
-    #     password=password
-    # )
-    # print(check_server.getServerInfo())
-    server = ServerSerializer(Server.objects.get(id=value)).data
-    print('server:', server)
+def check_server_info(server_id):
+    print('start at :', datetime.datetime.now())
+    server = Server.objects.get(id=server_id)
+    server_serializer = ServerSerializer(server).data
     check_server = check.CheckServer(
-        host=server['host'],
-        port=server['port'],
-        username=server['username'],
-        password=server['password']
+        host=server_serializer['host'],
+        port=server_serializer['port'],
+        username=server_serializer['username'],
+        password=server_serializer['password']
     )
     info = check_server.getServerInfo()
-    print('check server:',info)
+    created_at = datetime.datetime.now()
+    cpu = round(info.get('cpu'))
+    memory = round(info.get('memory'))
+    ram = round(info.get('ram'))
+    print(created_at, cpu, memory, ram)
+    data = dict()
+    data['cpu'] = cpu
+    data['memory'] = memory
+    data['ram'] = ram
+    serializer = ServerInfoSerializer(data=data,)
+    if serializer.is_valid():
+        serializer.save(server=server)
+    else:
+        print(serializer.errors)
+    print('finished test at ', datetime.datetime.now())
