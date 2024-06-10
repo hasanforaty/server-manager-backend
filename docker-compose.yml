@@ -17,8 +17,11 @@ services:
       - DB_NAME=dev_db
       - DB_USER=dev_user
       - DB_PASS=dev_pass
+#      - REDIS_HOST= cache
+#      - REDIS_PORT= 6379
     depends_on:
       - db
+#      - redis
 
   db:
     image: postgres:13-alpine
@@ -29,6 +32,17 @@ services:
       - POSTGRES_USER=dev_user
       - POSTGRES_PASSWORD=dev_pass
 
+#  redis:
+#    image: redis:6.0.9-alpine
+#    restart: always
+#    command: redis-server --save 20 1 --loglevel warning && systemctl enable redis-server && systemctl start redis-server
+##    ports:
+##      - '6379:6379'
+#    volumes:
+#      - cache:/data
+
 
 volumes:
   dev-db-data:
+#  cache:
+#    driver: local
