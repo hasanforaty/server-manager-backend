@@ -7,7 +7,7 @@ from schedule import Scheduler
 
 from helper import check
 from history.serializers import ServerInfoSerializer, ServiceHistorySerializer, ActionHistorySerializer
-from server.models import Server, DBService, Action
+from server.models import Server, DBService, Action, Service
 from server.serializers import ServerSerializer, DBServiceSerializer, ActionSerializer
 
 
@@ -111,9 +111,41 @@ def check_server(server_id):
         threads.append(thread)
         thread.start()
 
+    services = Service.objects.filter(server_id=server_id).all()
+    for service in services:
+        thread = threading.Thread(target=check_service, args=(service.id,))
+        threads.append(thread)
+        thread.start()
+
     for thread in threads:
         thread.join()
     print('finished test at ', datetime.datetime.now())
+
+
+def check_service(service_id):
+    service = Service.objects.get(id=service_id)
+    server = service.server
+    server_serializer = ServerSerializer(server).data
+    checked_server = check.CheckServer(
+        host=server_serializer['host'],
+        port=server_serializer['port'],
+        username=server_serializer['username'],
+        password=server_serializer['password']
+    )
+    result = checked_server.checkByCommand(
+        command=service.command,
+        contain=service.contain,
+    )
+    serializer = ServiceHistorySerializer(
+        data={
+            'status': result['success'],
+            'type': 'server'
+        }
+    )
+    if serializer.is_valid():
+        serializer.save(service=service)
+    else:
+        print(serializer.errors)
 
 
 def check_db(db_id):
