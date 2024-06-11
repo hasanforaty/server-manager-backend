@@ -3,6 +3,7 @@ import threading
 import time
 
 import schedule
+from django.db.models import QuerySet
 from schedule import Scheduler
 
 from helper import check
@@ -89,6 +90,26 @@ def check_servers():
         thread.join()
 
 
+def trimActionsJob(actions: QuerySet[Action], server_id):
+    """
+    Check actions a job list for Action that are disconnected from server
+    and stop their correspond Job
+    :param actions:
+    :param server_id:
+    :return:
+    """
+    static_part = "_{}_".format(server_id)
+    servers_key = dict()
+    for ke in _action_jobs.keys():
+        if static_part in ke:
+            servers_key[ke] = _action_jobs[ke]
+    for key in servers_key.keys():
+        actionId = key.split('_')[0]
+        if not actions.filter(id=actionId).exists():
+            oldJob = _action_jobs.pop(key)
+            _scheduler.cancel_job(oldJob)
+
+
 def check_server(server_id):
     print('start at :', datetime.datetime.now())
     threads = []
@@ -99,6 +120,7 @@ def check_server(server_id):
     s_thread.start()
 
     actions = server.actions.all()
+    trimActionsJob(actions, server_id)
     for action in actions:
         thread = threading.Thread(target=create_get_action_job, args=(action.id, server_id, action.interval))
         threads.append(thread)
