@@ -183,6 +183,7 @@ def create_get_action_job(action_id, server_id, interval):
             if static_part in ke:
                 old_job = _action_jobs.pop(ke)
                 _scheduler.cancel_job(old_job)
+                break
         job = _scheduler.every(interval).seconds.do(do_action, action_id, server_id)
         _action_jobs[key] = job
     return job
