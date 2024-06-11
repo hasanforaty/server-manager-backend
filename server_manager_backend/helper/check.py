@@ -136,3 +136,70 @@ class CheckServer:
             size += float(value['Size'].strip('G'))
             used += float(value['Used'].strip('G'))
         return float(used / size) * 100
+
+    def backupDirectory(self, path: str, to: str):
+        connection = ca.getOrCreateConnection(self.host, port=self.port, username=self.username, password=self.password)
+        if path.endswith('/'):
+            path = path[:-1]
+        list = path.strip().split('/')
+        name = list[len(list) - 1]
+        output = ''
+        dic_name = name + '_' + datetime.datetime.now().strftime("%Y_%m_%d_%H:%M")
+        stdin, stdout, stderr = connection.exec_command("cp -v -r {} {}/{}".format(path, to, dic_name))
+        for line in stdout:
+            output += line
+        re = False
+        expectedOutput = "'{}' -> '{}/{}'".format(path, to, dic_name)
+        if expectedOutput in output:
+            re = True
+        return re
+
+    def check_backupDirectory(self, to_path: str):
+        connection = ca.getOrCreateConnection(self.host, port=self.port, username=self.username, password=self.password)
+        if to_path.endswith('/'):
+            to_path = to_path[:-1]
+
+        stdin, stdout, stderr = connection.exec_command("cd {} && ls -lt ".format(to_path))
+        output = ""
+        current_day = datetime.datetime.now().strftime("%d")
+        for line in stdout:
+            output += line
+        output_list = output.split('\n')
+        """
+        total 24
+        drwxr-xr-x 2 root root 4096 ژوئن    11 11:42 backup_2024_06_11_11:42
+        drwxr-xr-x 2 root root 4096 ژوئن    11 11:34 backup_2024_06_11_11:34
+        drwxr-xr-x 3 root root 4096 ژوئن    11 11:28 backup_2024_06_11_11:28
+        drwxr-xr-x 2 root root 4096 ژوئن    11 11:25 backup_2024_06_11_11:25
+        drwxr-xr-x 2 root root 4096 ژوئن    11 11:22 backup
+        -rwxr-xr-x 1 root root 1491 ژوئن    11 11:22 code.txt
+        """
+        index = 0
+        if 'total' in output_list[index]:
+            index += 1
+        if len(output_list) < 2:
+            return False
+        latest_backup_entry = output_list[index].split()
+        print(latest_backup_entry)
+        if current_day in latest_backup_entry:
+            print("ok")
+            return True
+        return False
+
+    # def check_backupDirectory(self, from_path: str, to_path: str):
+    #     connection = ca.getOrCreateConnection(self.host, port=self.port, username=self.username, password=self.password)
+    #     if to_path.endswith('/'):
+    #         to_path = to_path[:-1]
+    #     if from_path.endswith('/'):
+    #         from_path = from_path[:-1]
+    #
+    #     stdin, stdout, stderr = connection.exec_command("cd {} && ls -lA".format(to_path))
+    #     output = ""
+    #     today_date = datetime.datetime.now().strftime("%Y_%m_%d")
+    #     for line in stdout:
+    #         output += line
+    #     output_list = output.split()
+    #     for line in output_list:
+    #         if from_path in line and today_date in line:
+    #             return True
+    #     return False
