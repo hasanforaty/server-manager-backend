@@ -1,13 +1,14 @@
+import datetime
 import threading
 import time
-import datetime
 
+import schedule
 from schedule import Scheduler
-from server.models import Server, Service, DBService
-from server.serializers import ServerSerializer, DBServiceSerializer
+
 from helper import check
-from history.models import ServerInfo
 from history.serializers import ServerInfoSerializer, ServiceHistorySerializer
+from server.models import Server, DBService
+from server.serializers import ServerSerializer, DBServiceSerializer
 
 
 def run_continuously(self, interval=1):
@@ -18,7 +19,7 @@ def run_continuously(self, interval=1):
     Please note that it is *intended behavior that run_continuously()
     does not run missed jobs*. For example, if you've registered a job
     that should run every minute and you set a continuous run interval
-    of one hour then your job won't be run 60 times at each interval but
+    of one hour, then your job won't be run 60 times at each interval but
     only once.
     """
 
@@ -39,9 +40,18 @@ def run_continuously(self, interval=1):
 
 
 Scheduler.run_continuously = run_continuously
+_job: schedule.Job
+_scheduler: Scheduler
+_action_jobs = dict()
 
 
-def start_scheduler():
+def start_scheduler(do_every: int = 4):
+    """
+    Starts a scheduler to do the server's task
+    :param do_every: do the task every N seconds
+    :return: None
+    """
+    global _job, _scheduler
     # check_server = check.CheckServer(
     #     host=host,
     #     port=port,
@@ -49,9 +59,23 @@ def start_scheduler():
     #     password=password
     # )
     # check_server.check_server()
-    scheduler = Scheduler()
-    scheduler.every(4).seconds.do(check_servers)
-    scheduler.run_continuously()
+    _scheduler = Scheduler()
+    _job = _scheduler.every(do_every).seconds.do(check_servers)
+    _scheduler.run_continuously()
+
+
+def stop_scheduler():
+    global _job, _scheduler
+    if _job is not None and _scheduler is not None:
+        _scheduler.cancel_job(_job)
+        _job = None
+    else:
+        raise Exception("Scheduler not running")
+
+
+def restart_scheduler(do_every: int = 4):
+    stop_scheduler()
+    start_scheduler(do_every=do_every)
 
 
 def check_servers():

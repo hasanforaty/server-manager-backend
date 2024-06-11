@@ -43,10 +43,11 @@ class DBService(models.Model):
 
 class Action(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True)
+    name = models.CharField(max_length=32)
     command = models.TextField()
     onSuccess = models.TextField()
     onError = models.TextField()
-    interval = models.IntegerField()
+    interval = models.PositiveBigIntegerField()
 
     def __str__(self):
         return self.id + '-' + self.command + ' - ' + self.onSuccess + ' - ' + self.onError
