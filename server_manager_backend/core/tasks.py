@@ -6,9 +6,9 @@ import schedule
 from schedule import Scheduler
 
 from helper import check
-from history.serializers import ServerInfoSerializer, ServiceHistorySerializer
-from server.models import Server, DBService
-from server.serializers import ServerSerializer, DBServiceSerializer
+from history.serializers import ServerInfoSerializer, ServiceHistorySerializer, ActionHistorySerializer
+from server.models import Server, DBService, Action
+from server.serializers import ServerSerializer, DBServiceSerializer, ActionSerializer
 
 
 def run_continuously(self, interval=1):
@@ -98,7 +98,12 @@ def check_server(server_id):
     threads.append(s_thread)
     s_thread.start()
 
-    actions = server_serializer['actions']
+    actions = server.actions.all()
+    for action in actions:
+        thread = threading.Thread(target=create_get_action_job, args=(action.id, server_id, action.interval))
+        threads.append(thread)
+        thread.start()
+
     dbServices = DBService.objects.filter(server_id=server_id).all()
     db_serializer = DBServiceSerializer(dbServices, many=True).data
     for db in db_serializer:
@@ -162,5 +167,51 @@ def check_server_info(server_id):
     serializer = ServerInfoSerializer(data=data, )
     if serializer.is_valid():
         serializer.save(server=server)
+    else:
+        print(serializer.errors)
+
+
+def create_get_action_job(action_id, server_id, interval):
+    global _action_jobs, _scheduler
+    key = "{}_{}_{}".format(action_id, server_id, str(interval))
+    job = _action_jobs.get(key, None)
+
+    if job is None:
+        # check to see if an interval has changes
+        static_part = "{}_{}_".format(action_id, server_id)
+        for ke in _action_jobs.keys():
+            if static_part in ke:
+                old_job = _action_jobs.pop(ke)
+                _scheduler.cancel_job(old_job)
+        job = _scheduler.every(interval).seconds.do(do_action, action_id, server_id)
+        _action_jobs[key] = job
+    return job
+
+
+def do_action(action_id, server_id):
+    action = Action.objects.get(id=action_id)
+    action_serializer = ActionSerializer(action).data
+    server = Server.objects.get(id=server_id)
+    server_serializer = ServerSerializer(server).data
+    print('at : ', datetime.datetime.now(), 'doing action : ', action_id, )
+    checked_server = check.CheckServer(
+        host=server_serializer['host'],
+        port=server_serializer['port'],
+        username=server_serializer['username'],
+        password=server_serializer['password']
+    )
+    result = checked_server.checkByCommand(
+        command=action_serializer['command'],
+        contain=action_serializer['onSuccess']
+    )
+    serializer = ActionHistorySerializer(
+        data={
+            'log': result['log'],
+            'created_at': result['date'],
+            'status': result['success']
+        }
+    )
+    if serializer.is_valid():
+        serializer.save(action=action, server=server)
     else:
         print(serializer.errors)

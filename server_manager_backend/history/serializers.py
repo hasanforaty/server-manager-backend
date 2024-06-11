@@ -23,13 +23,7 @@ class ActionHistorySerializer(serializers.ModelSerializer):
             'created_at',
             'status'
         ]
-
-    def get_fields(self, *args, **kwargs):
-        """Make all field read-only"""
-        fields = super().get_fields()
-        for field in fields.values():
-            field.read_only = True
-        return fields
+        read_only_fields = ['id',]
 
 
 class ServerInfoSerializer(serializers.ModelSerializer):
