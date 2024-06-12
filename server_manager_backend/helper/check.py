@@ -133,9 +133,67 @@ class CheckServer:
         size = 0
         used = 0
         for value in listValue:
-            size += float(value['Size'].strip('G'))
-            used += float(value['Used'].strip('G'))
+            size_temp = float(value['Size'][:-1])
+            if value['Size'].endswith('G'):
+                size_temp = size_temp * 1024
+            size += size_temp
+            used_temp = float(value['Used'][:-1])
+            if value['Used'].endswith('G'):
+                used_temp = used_temp * 1024
+            used += used_temp
         return float(used / size) * 100
+
+    # def backup_database(self, database_name, username, password, ):
+    #     # sql = "select * from information_schema.tables  limit 1000"
+    #     sql = f"pg_dump {database_name} > backup"
+    #     try:
+    #         with SSHTunnelForwarder(
+    #                 (self.host, self.port),
+    #                 ssh_username=self.username,
+    #                 ssh_password=self.password,
+    #                 remote_bind_address=('localhost', 5432)
+    #         ) as server:
+    #             conn = db.connect(host='localhost',
+    #                               port=server.local_bind_port,
+    #                               user=username,
+    #                               password=password,
+    #                               dbname=database_name)
+    #             pd.read_sql_query(sql, conn)
+    #             return True
+    #     except BaseException as ex:
+    #         return False
+
+    def backup_database(self, database_name, database_password, database_user, database_host, database_port):
+        client = ca.getOrCreateConnection(self.host, port=self.port, username=self.username, password=self.password)
+        connection = client.invoke_shell()
+        channel_data = ''
+        send_pass = False
+        try:
+            while True:
+                if connection.recv_ready():
+                    channel_data += str(connection.recv(9999))
+                    print(channel_data)
+                else:
+                    continue
+                if channel_data.endswith("~# '"):
+                    connection.send(
+                        f"pg_dump -h {database_host} -d {database_name} -U {database_user} -p {database_port} -f backup{datetime.datetime.now()}.sql \n")
+                elif channel_data.endswith("Password: '"):
+                    connection.send(f'{database_password}\n')
+                    send_pass = True
+                    continue
+                if send_pass:
+                    while True:
+                        if connection.recv_ready():
+                            channel_data += str(connection.recv(9999))
+                        else:
+                            continue
+                        if channel_data.endswith("~# '"):
+                            return True
+        except Exception as ex:
+            return False
+        finally:
+            connection.close()
 
     def backupDirectory(self, path: str, to: str):
         connection = ca.getOrCreateConnection(self.host, port=self.port, username=self.username, password=self.password)
@@ -180,9 +238,7 @@ class CheckServer:
         if len(output_list) < 2:
             return False
         latest_backup_entry = output_list[index].split()
-        print(latest_backup_entry)
         if current_day in latest_backup_entry:
-            print("ok")
             return True
         return False
 

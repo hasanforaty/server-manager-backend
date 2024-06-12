@@ -105,7 +105,8 @@ class BackupHistorySerializer(serializers.ModelSerializer):
         required=False,
     )
     folder = BackupSerializer(
-        required=False
+        required=False,
+        read_only=True
     )
 
     class Meta:
@@ -117,4 +118,10 @@ class BackupHistorySerializer(serializers.ModelSerializer):
             'folder',
             'type',
             'created_at',
+        ]
+        read_only_fields = [
+            'id',
+            'service',
+            'folder',
+            'created_at'
         ]
