@@ -12,9 +12,9 @@ class ActionHistory(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, auto_created=True)
     action = models.ForeignKey(Action, on_delete=models.SET_NULL, null=True)
     server = models.ForeignKey(Server, on_delete=models.SET_NULL, null=True, )
-    log = models.JSONField(null=True, blank=True, default=dict)
+    log = models.JSONField(null=True, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
-    status = models.BooleanField(default=False)
+    status = models.BooleanField(default=True, null=True, blank=True)
 
 
 class ServerInfo(models.Model):
@@ -23,6 +23,7 @@ class ServerInfo(models.Model):
     cpu = models.PositiveIntegerField(default=0, validators=[MaxValueValidator(100)])
     ram = models.PositiveIntegerField(default=0, validators=[MaxValueValidator(100)])
     memory = models.PositiveIntegerField(default=0, validators=[MaxValueValidator(100)])
+    log = models.JSONField(null=True, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 
 
@@ -39,13 +40,15 @@ class ServiceHistory(models.Model):
         choices=TYPE_CHOICES,
         max_length=32,
     )
-    status = models.BooleanField(default=False)
+    status = models.BooleanField(default=True, null=True, blank=True)
+    log = models.JSONField(null=True, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
 
 
 class BackupHistory(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    status = models.BooleanField(default=False)
+    status = models.BooleanField(default=True, null=True, blank=True)
+    log = models.JSONField(null=True, blank=True, default='')
     service = models.ForeignKey(DBService, blank=True, null=True, on_delete=models.SET_NULL)
     folder = models.ForeignKey(FolderBackup, blank=True, null=True, on_delete=models.SET_NULL)
     type = models.CharField(max_length=32, choices=(('backup', 'Backup'), ('folder', 'Folder')))

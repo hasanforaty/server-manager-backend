@@ -23,7 +23,7 @@ class ActionHistorySerializer(serializers.ModelSerializer):
             'created_at',
             'status'
         ]
-        read_only_fields = ['id',]
+        read_only_fields = ['id', ]
 
 
 class ServerInfoSerializer(serializers.ModelSerializer):
@@ -33,7 +33,7 @@ class ServerInfoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ServerInfo
-        fields = ['id', 'server', 'created_at', 'cpu', 'ram', 'memory']
+        fields = ['id', 'server', 'created_at', 'cpu', 'ram', 'memory', 'log']
         read_only = ['server', 'created_at', ]
 
     # def get_fields(self, *args, **kwargs):
@@ -63,6 +63,7 @@ class ServiceHistorySerializer(serializers.ModelSerializer):
             'type',
             'created_at',
             'status',
+            'log'
         ]
         read_only = ['service', 'created_at', 'serviceDB']
 
@@ -80,6 +81,7 @@ class ServiceServerHistorySerializer(serializers.ModelSerializer):
             'type',
             'created_at',
             'status',
+            'log',
         ]
 
 
@@ -95,7 +97,8 @@ class ServiceDBHistorySerializer(serializers.ModelSerializer):
             'serviceDB',
             'type',
             'created_at',
-            'status'
+            'status',
+            'log'
         ]
 
 
@@ -118,6 +121,7 @@ class BackupHistorySerializer(serializers.ModelSerializer):
             'folder',
             'type',
             'created_at',
+            'log'
         ]
         read_only_fields = [
             'id',

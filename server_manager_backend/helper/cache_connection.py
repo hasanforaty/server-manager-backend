@@ -1,3 +1,5 @@
+import datetime
+
 import paramiko
 
 """
@@ -6,12 +8,13 @@ host: connection
 }
 """
 _connections = dict()
+_connections_time = dict()
 
 
 def getOrCreateConnection(host, port, username, password) -> paramiko.client.SSHClient:
     key = "{}:{}:{}".format(host, port, username)
     connection = _connections.get(key, None)
-    if connection is None:
+    if connection is None or (datetime.datetime.now().date() - _connections_time[key].day() > 1):
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         client.connect(
@@ -22,6 +25,8 @@ def getOrCreateConnection(host, port, username, password) -> paramiko.client.SSH
         )
         _connections[key] = client
         connection = client
+        _connections_time[key] = datetime.datetime.now()
+
     return connection
 
 
@@ -31,4 +36,3 @@ def removeAndCloseConnection(host, port, username):
     if client is not None:
         if isinstance(client, paramiko.client.SSHClient):
             client.close()
-
