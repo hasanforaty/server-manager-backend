@@ -39,10 +39,10 @@ class ActionHistoryViewSet(
     viewsets.GenericViewSet
 ):
     serializer_class = ActionHistorySerializer
-    queryset = ActionHistory.objects.all()
+    queryset = ActionHistory.objects.all().order_by('-created_at')
 
     def get_queryset(self):
-        queryset = ActionHistory.objects.all()
+        queryset = self.queryset
         server = self.request.query_params.get('server')
         try:
             if server is not None:
@@ -74,10 +74,10 @@ class ServerInfoViewSet(
     viewsets.GenericViewSet
 ):
     serializer_class = ServerInfoSerializer
-    queryset = ServerInfo.objects.all()
+    queryset = ServerInfo.objects.all().order_by('-created_at')
 
     def get_queryset(self):
-        queryset = ServerInfo.objects.all()
+        queryset = self.queryset
         server = self.request.query_params.get('server')
         if server is not None:
             try:
@@ -112,11 +112,11 @@ class ServiceHistoryViewSet(
     mixins.RetrieveModelMixin,
     viewsets.GenericViewSet
 ):
-    queryset = ServiceHistory.objects.all()
+    queryset = ServiceHistory.objects.all().order_by('-created_at')
     serializer_class = ServiceHistorySerializer
 
     def get_queryset(self):
-        queryset = ServiceHistory.objects.all()
+        queryset = self.queryset
         service = self.request.query_params.get('service')
         serviceDB = self.request.query_params.get('serviceDB')
         try:
@@ -156,11 +156,11 @@ class BackupHistoryViewSet(
     mixins.RetrieveModelMixin,
     viewsets.GenericViewSet
 ):
-    queryset = BackupHistory.objects.all()
+    queryset = BackupHistory.objects.all().order_by('-created_at')
     serializer_class = BackupHistorySerializer
 
     def get_queryset(self):
-        queryset = BackupHistory.objects.all()
+        queryset = self.queryset
         service = self.request.query_params.get('service')
         folder = self.request.query_params.get('folder')
         try:
