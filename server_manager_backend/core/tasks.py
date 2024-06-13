@@ -10,9 +10,10 @@ from helper import check
 from history.serializers import ServerInfoSerializer, ServiceHistorySerializer, ActionHistorySerializer, \
     BackupHistorySerializer
 from server.models import Server, DBService, Action, Service
-from server.serializers import ServerSerializer, DBServiceSerializer, ActionSerializer
+from server.serializers import ServerSerializer, DBServiceSerializer, ActionSerializer, ServiceSerializer
 from backup.models import FolderBackup
 from backup.serializers import BackupSerializer
+from helper.cache_connection import getOrCreateCash
 
 
 def run_continuously(self, interval=1):
@@ -90,9 +91,13 @@ def restart_scheduler(do_every: int = 4):
 
 
 def check_servers():
+    cashed = getOrCreateCash()
+    cashed.data = "hello"
     threads = []
     servers = ServerSerializer(Server.objects.all(), many=True).data
+    getOrCreateCash().lastServer.clear()
     for value in servers:
+        getOrCreateCash().lastServer.append(value)
         thread = threading.Thread(target=check_server, args=(value['id'],))
         threads.append(thread)
         thread.start()
@@ -138,12 +143,14 @@ def check_server(server_id):
 
     dbServices = DBService.objects.filter(server_id=server_id).all()
     db_serializer = DBServiceSerializer(dbServices, many=True).data
+    getOrCreateCash().lastDB[str(server_id)] = db_serializer
     for db in db_serializer:
         thread = threading.Thread(target=check_db, args=(db['id'],))
         threads.append(thread)
         thread.start()
 
     services = Service.objects.filter(server_id=server_id).all()
+    getOrCreateCash().lastService[str(server_id)] = ServiceSerializer(services, many=True).data
     for service in services:
         thread = threading.Thread(target=check_service, args=(service.id,))
         threads.append(thread)
@@ -176,6 +183,7 @@ def check_service(service_id):
     )
     if serializer.is_valid():
         serializer.save(service=service)
+        getOrCreateCash().lastServiceHistory[str(service_id)] = serializer.data
     else:
         print(serializer.errors)
 
@@ -205,6 +213,7 @@ def check_db(db_id):
         serializer.save(
             serviceDB=service
         )
+        getOrCreateCash().lastDBHistory[str(db_id)] = serializer.data
     else:
         print(serializer.errors)
 
@@ -223,7 +232,6 @@ def check_server_info(server_id):
     cpu = round(info.get('cpu'))
     memory = round(info.get('memory'))
     ram = round(info.get('ram'))
-    print(created_at, cpu, memory, ram)
     data = dict()
     data['cpu'] = cpu
     data['memory'] = memory
@@ -231,6 +239,7 @@ def check_server_info(server_id):
     serializer = ServerInfoSerializer(data=data, )
     if serializer.is_valid():
         serializer.save(server=server)
+        getOrCreateCash().lastServerInfo[str(server_id)] = serializer.data
     else:
         print(serializer.errors)
 
