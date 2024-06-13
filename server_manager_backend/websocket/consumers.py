@@ -1,9 +1,10 @@
 import json
 import time
 
+from asgiref.sync import sync_to_async, async_to_sync
+from channels.exceptions import StopConsumer
 from channels.generic.websocket import AsyncWebsocketConsumer
-
-from helper.cache_connection import getOrCreateCash
+from core.models import CacheModel
 
 
 class ServerSummeryConsumer(AsyncWebsocketConsumer):
@@ -11,10 +12,11 @@ class ServerSummeryConsumer(AsyncWebsocketConsumer):
 
         await self.accept()
         while int(1) in [1]:
-            catch = getOrCreateCash()
             threads = []
             try:
-                summery_list = catch.get_summaries()
+                summery_list = await sync_to_async(CacheModel.objects.all().first)()
+                my_json = summery_list.json
+
                 # servers = lastServer
                 # for server in servers:
                 #     get_server_summery(server_id=server['id'], summery_list=summery_list)
@@ -25,8 +27,8 @@ class ServerSummeryConsumer(AsyncWebsocketConsumer):
                 # # for thread in threads:
                 # #     thread.join()
 
-                summery_list.sort(key=lambda summery: summery['id'])
-                await self.send(text_data=json.dumps(summery_list))
+                my_json.sort(key=lambda summery: summery['id'])
+                await self.send(text_data=json.dumps(my_json))
                 # Random.objects.create(text="test")
                 time.sleep(1)
             except Exception as e:
@@ -34,11 +36,18 @@ class ServerSummeryConsumer(AsyncWebsocketConsumer):
 
         await self.close()
 
+    # def disconnect(self, close_code):
+    #     self.close()
+    #
+    # def receive(self):
+    #     self.close()
     def disconnect(self, close_code):
-        self.close()
-
-    def receive(self):
-        self.close()
+        # Leave room group
+        async_to_sync(self.channel_layer.group_discard)(
+            self.room_group_name,
+            self.channel_name
+        )
+        raise StopConsumer()
 
 
 # @sync_to_async
@@ -150,3 +159,4 @@ class ServerSummeryConsumer(AsyncWebsocketConsumer):
 #
 #     summery['services'] = service_convertor
 #     summery_list.append(summery)
+

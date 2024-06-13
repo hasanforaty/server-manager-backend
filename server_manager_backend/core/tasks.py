@@ -13,7 +13,7 @@ from server.models import Server, DBService, Action, Service
 from server.serializers import ServerSerializer, DBServiceSerializer, ActionSerializer, ServiceSerializer
 from backup.models import FolderBackup
 from backup.serializers import BackupSerializer
-from helper.cache_connection import getOrCreateCash
+from core.models import CacheModel
 
 
 def run_continuously(self, interval=1):
@@ -91,18 +91,20 @@ def restart_scheduler(do_every: int = 4):
 
 
 def check_servers():
-    cashed = getOrCreateCash()
+    cashed = get_or_create_cache()
     cashed.data = "hello"
     threads = []
     servers = ServerSerializer(Server.objects.all(), many=True).data
-    getOrCreateCash().lastServer.clear()
+    get_or_create_cache().lastServer.clear()
     for value in servers:
-        getOrCreateCash().lastServer.append(value)
+        get_or_create_cache().lastServer.append(value)
         thread = threading.Thread(target=check_server, args=(value['id'],))
         threads.append(thread)
         thread.start()
     for thread in threads:
         thread.join()
+
+    cashed.save_summary()
 
 
 def trimActionsJob(actions: QuerySet[Action], server_id):
@@ -143,14 +145,14 @@ def check_server(server_id):
 
     dbServices = DBService.objects.filter(server_id=server_id).all()
     db_serializer = DBServiceSerializer(dbServices, many=True).data
-    getOrCreateCash().lastDB[str(server_id)] = db_serializer
+    get_or_create_cache().lastDB[str(server_id)] = db_serializer
     for db in db_serializer:
         thread = threading.Thread(target=check_db, args=(db['id'],))
         threads.append(thread)
         thread.start()
 
     services = Service.objects.filter(server_id=server_id).all()
-    getOrCreateCash().lastService[str(server_id)] = ServiceSerializer(services, many=True).data
+    get_or_create_cache().lastService[str(server_id)] = ServiceSerializer(services, many=True).data
     for service in services:
         thread = threading.Thread(target=check_service, args=(service.id,))
         threads.append(thread)
@@ -183,7 +185,7 @@ def check_service(service_id):
     )
     if serializer.is_valid():
         serializer.save(service=service)
-        getOrCreateCash().lastServiceHistory[str(service_id)] = serializer.data
+        get_or_create_cache().lastServiceHistory[str(service_id)] = serializer.data
     else:
         print(serializer.errors)
 
@@ -213,7 +215,7 @@ def check_db(db_id):
         serializer.save(
             serviceDB=service
         )
-        getOrCreateCash().lastDBHistory[str(db_id)] = serializer.data
+        get_or_create_cache().lastDBHistory[str(db_id)] = serializer.data
     else:
         print(serializer.errors)
 
@@ -239,7 +241,7 @@ def check_server_info(server_id):
     serializer = ServerInfoSerializer(data=data, )
     if serializer.is_valid():
         serializer.save(server=server)
-        getOrCreateCash().lastServerInfo[str(server_id)] = serializer.data
+        get_or_create_cache().lastServerInfo[str(server_id)] = serializer.data
     else:
         print(serializer.errors)
 
@@ -339,3 +341,135 @@ def backup_folder(folder_id):
         serializer.save(folder=folder)
     else:
         print(serializer.errors)
+
+
+_cash = None
+
+
+def get_or_create_cache():
+    global _cash
+
+    if _cash is None:
+        _cash = CashLastData()
+    return _cash
+
+
+class CashLastData:
+    def __init__(self):
+        self.lastServerInfo = dict()
+        self.lastServiceHistory = dict()
+        self.lastService = dict()
+        self.lastServer = []
+        self.lastDB = dict()
+        self.lastDBHistory = dict()
+
+    def get_server_summery(self, server_id, summery_list):
+        summery = dict()
+        summery['id'] = str(server_id)
+        """
+         config:{
+            id:1,
+            hostName:'همدان',
+            host:'host.com',
+            port:2020,
+            username:'hasan',
+            password:'1234',
+          },
+        """
+        info = self.lastServerInfo[str(server_id)]
+        """
+         info: {
+            id:1,
+            server : 'همدان',
+            ram : 80,
+            memory : 75,
+            cpu:50,
+            status:[
+              {
+                name:'Server',
+                status:'green',
+              },
+              {
+                name:'Db',
+                status:'red',
+              },
+            ],
+            lastUpdate:"11/11/2020",
+            lastBackup:null,
+          }
+        """
+        if info is not None:
+            server = info['server']
+            summery['config'] = {
+                'id': str(server_id),
+                'hostName': server['name'],
+                'host': server['host'],
+                'port': server['port'],
+                'username': server['username'],
+                'password': server['password'],
+            }
+            lastUpdate = info["created_at"]
+            summery['info'] = {
+                'id': str(info['id']),
+                'server': info['server']['name'],
+                'ram': info['ram'],
+                'memory': info['memory'],
+                'cpu': info['cpu'],
+                'lastUpdate': lastUpdate,
+                'lastBackup': None,
+                'status': []
+            }
+        services = self.lastService[str(server_id)]
+        databases = self.lastDB[str(server_id)]
+        service_convertor = []
+        for service in services:
+            service_convertor.append({
+                'id': str(service['id']),
+                'type': 'سرور',
+                'serviceName': service['name'],
+                'command': service['command'],
+                'contain': service['contain'],
+            })
+            history = self.lastServiceHistory[str(service['id'])]
+            if history is not None:
+                if history['status']:
+                    status = 'green'
+                else:
+                    status = 'red'
+                summery['info'].get('status').append({
+                    'name': service['name'],
+                    'status': status
+                })
+        for database in databases:
+            service_convertor.append({
+                'id': str(database['id']),
+                'type': 'دیتابیس',
+                'serviceName': database['name'],
+                'username': database['username'],
+                'password': database['password'],
+                'host': database['host'],
+                'port': database['port']
+            })
+            history = self.lastDBHistory[str(database['id'])]
+            if history is not None:
+                if history['status']:
+                    status = 'green'
+                else:
+                    status = 'red'
+                summery['info'].get('status').append({
+                    'name': database['name'],
+                    'status': status
+                })
+
+        summery['services'] = service_convertor
+        summery_list.append(summery)
+
+    def get_summaries(self):
+        summaries = []
+        for server in self.lastServer:
+            self.get_server_summery(server_id=server['id'], summery_list=summaries)
+        return summaries
+
+    def save_summary(self):
+        CacheModel.objects.all().delete()
+        CacheModel.objects.create(json=self.get_summaries())
