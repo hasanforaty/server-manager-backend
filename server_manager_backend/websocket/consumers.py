@@ -33,7 +33,6 @@ class ServerSummeryConsumer(AsyncWebsocketConsumer):
                     # #     thread.join()
                     for key in my_json.keys():
                         my_response.append(my_json.get(key))
-                    print('my_response', my_response)
                     my_response.sort(key=lambda summery: summery['id'])
                     await self.send(text_data=json.dumps(my_response))
                     # Random.objects.create(text="test")

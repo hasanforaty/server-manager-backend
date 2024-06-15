@@ -105,8 +105,10 @@ def check_servers():
 
     for thread in threads:
         thread.join()
-
+    print('start creating summary ............ ', datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
     cashed.save_summary()
+    cashed.clear_cache()
+    print('end creating summary ............ ', datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
     print('end checking ............ ', datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
 
@@ -245,7 +247,7 @@ def check_server_info(server_id):
         password=server_serializer['password']
     )
     info = checked_server.getServerInfo()
-    created_at = datetime.datetime.now()
+    created_at = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     cpu = round(info.get('cpu'))
     memory = round(info.get('memory'))
     ram = round(info.get('ram'))
@@ -256,7 +258,11 @@ def check_server_info(server_id):
     serializer = ServerInfoSerializer(data=data, )
     if serializer.is_valid():
         serializer.save(server=server)
-        get_or_create_cache().lastServerInfo[str(server_id)] = serializer.data
+        data = serializer.data
+        data.pop('created_at')
+        data['created_at'] = created_at
+        get_or_create_cache().lastServerInfo[str(server_id)] = data
+
     else:
         print(serializer.errors)
 
@@ -378,8 +384,8 @@ class CashLastData:
         self.lastDBHistory = dict()
 
     def get_server_summery(self, server_id, summery_list):
-        summery = dict()
         try:
+            summery = dict()
             summery['id'] = str(server_id)
             """
              config:{
@@ -392,6 +398,9 @@ class CashLastData:
               },
             """
             info = self.lastServerInfo[str(server_id)]
+            # if str(server_id) == '655fb319-bf83-496e-9fe5-0d58c520e59e':
+            #     print('info is ', info)
+            #     print('lastServerInfo is ', self.lastServerInfo)
             """
              info: {
                 id:1,
@@ -478,8 +487,23 @@ class CashLastData:
 
             summery['services'] = service_convertor
             summery_list[server_id] = summery
+            return summery
         except Exception as ex:
             print('in get_server_summery', ex)
+            summery = dict()
+            if summery_list.get(server_id,None) is None:
+                for server in self.lastServer:
+                    if server['id'] == str(server_id):
+                        summery['config'] = {
+                            'id': str(server_id),
+                            'name': server['name'],
+                            'host': server['host'],
+                            'port': server['port'],
+                            'username': server['username'],
+                            'password': server['password'],
+                        }
+                        summery_list[server_id] = summery
+                        return summery
 
     def get_summaries(self, oldSummery: dict):
         summaries = dict()
@@ -487,7 +511,8 @@ class CashLastData:
             old = oldSummery.get(server['id'], None)
             if old is not None:
                 summaries[server['id']] = old
-            self.get_server_summery(server_id=server['id'], summery_list=summaries)
+            temp = self.get_server_summery(server_id=server['id'], summery_list=summaries)
+            print('for server ', server, 'temp ', temp)
         return summaries
 
     def save_summary(self):
@@ -498,11 +523,13 @@ class CashLastData:
         jsonResponse = self.get_summaries(oldSummery)
 
         CacheModel.objects.all().delete()
+
+        CacheModel.objects.create(json=jsonResponse)
+
+    def clear_cache(self):
         self.lastServerInfo.clear()
         self.lastServiceHistory.clear()
         self.lastService.clear()
         self.lastServer.clear()
         self.lastDB.clear()
         self.lastDBHistory.clear()
-
-        CacheModel.objects.create(json=jsonResponse)
