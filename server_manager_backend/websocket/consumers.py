@@ -19,21 +19,24 @@ class ServerSummeryConsumer(AsyncWebsocketConsumer):
                 summery_list = await sync_to_async(CacheModel.objects.all().order_by('-created_at').first)()
                 if summery_list:
 
-                    my_json = summery_list.json
+                    my_json: dict = summery_list.json
+                    my_response = []
 
-                # servers = lastServer
-                # for server in servers:
-                #     get_server_summery(server_id=server['id'], summery_list=summery_list)
-                # #     thread = threading.Thread(target=get_server_summery, args=(server.id, summery_list))
-                # #     threads.append(thread)
-                # #     thread.start()
-                # #
-                # # for thread in threads:
-                # #     thread.join()
-
-                    my_json.sort(key=lambda summery: summery['id'])
-                    await self.send(text_data=json.dumps(my_json))
-                # Random.objects.create(text="test")
+                    # servers = lastServer
+                    # for server in servers:
+                    #     get_server_summery(server_id=server['id'], summery_list=summery_list)
+                    # #     thread = threading.Thread(target=get_server_summery, args=(server.id, summery_list))
+                    # #     threads.append(thread)
+                    # #     thread.start()
+                    # #
+                    # # for thread in threads:
+                    # #     thread.join()
+                    for key in my_json.keys():
+                        my_response.append(my_json.get(key))
+                    print('my_response', my_response)
+                    my_response.sort(key=lambda summery: summery['id'])
+                    await self.send(text_data=json.dumps(my_response))
+                    # Random.objects.create(text="test")
                     await asyncio.sleep(4)
                 else:
                     await asyncio.sleep(2)
@@ -55,7 +58,6 @@ class ServerSummeryConsumer(AsyncWebsocketConsumer):
             self.channel_name
         )
         raise StopConsumer()
-
 
 # @sync_to_async
 # def printInfo():

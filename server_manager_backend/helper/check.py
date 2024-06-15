@@ -15,9 +15,11 @@ class CheckServer:
 
     def check_server(self):
         try:
-            ca.getOrCreateConnection(self.host, port=self.port, username=self.username, password=self.password)
+            connection = ca.getOrCreateConnection(self.host, port=self.port, username=self.username, password=self.password)
+            channel = connection.invoke_shell()
+            channel.close()
             return True
-        except BaseException as ex:
+        except Exception as ex:
             return False
 
     def check_database(self, database_name, username, password):

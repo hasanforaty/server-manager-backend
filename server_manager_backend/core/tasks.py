@@ -5,6 +5,7 @@ import time
 import schedule
 from django.db.models import QuerySet
 from schedule import Scheduler
+from core.serializers import CacheModelSerializer
 
 from helper import check
 from history.serializers import ServerInfoSerializer, ServiceHistorySerializer, ActionHistorySerializer, \
@@ -91,6 +92,7 @@ def restart_scheduler(do_every: int = 4):
 
 
 def check_servers():
+    print('start checking ............ ', datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
     cashed = get_or_create_cache()
     threads = []
     servers = ServerSerializer(Server.objects.all(), many=True).data
@@ -100,10 +102,12 @@ def check_servers():
         thread = threading.Thread(target=check_server, args=(value['id'],))
         threads.append(thread)
         thread.start()
+
     for thread in threads:
         thread.join()
 
     cashed.save_summary()
+    print('end checking ............ ', datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
 
 def trimActionsJob(actions: QuerySet[Action], server_id):
@@ -127,44 +131,51 @@ def trimActionsJob(actions: QuerySet[Action], server_id):
 
 
 def check_server(server_id):
-    print('start at :', datetime.datetime.now())
     # threads = []
+
     server = Server.objects.get(id=server_id)
     server_serializer = ServerSerializer(server).data
-    # s_thread = threading.Thread(target=check_server_info, args=(server_id,))
-    check_server_info(server_id)
-    # threads.append(s_thread)
-    # s_thread.start()
+    checked_server = check.CheckServer(
+        host=server_serializer['host'],
+        port=server_serializer['port'],
+        username=server_serializer['username'],
+        password=server_serializer['password']
+    )
+    if checked_server.check_server():
+        # s_thread = threading.Thread(target=check_server_info, args=(server_id,))
+        check_server_info(server_id)
+        # threads.append(s_thread)
+        # s_thread.start()
 
-    actions = server.actions.all()
-    trimActionsJob(actions, server_id)
-    for action in actions:
-        create_get_action_job(action.id, server_id,action.interval)
+        actions = server.actions.all()
+        trimActionsJob(actions, server_id)
+        for action in actions:
+            create_get_action_job(action.id, server_id, action.interval)
+            # thread = threading.Thread(target=create_get_action_job, args=(action.id, server_id, action.interval))
+            # threads.append(thread)
+            # thread.start()
 
-        # thread = threading.Thread(target=create_get_action_job, args=(action.id, server_id, action.interval))
-        # threads.append(thread)
-        # thread.start()
+        dbServices = DBService.objects.filter(server_id=server_id).all()
+        db_serializer = DBServiceSerializer(dbServices, many=True).data
+        get_or_create_cache().lastDB[str(server_id)] = db_serializer
+        for db in db_serializer:
+            check_db(db['id'])
+            # thread = threading.Thread(target=check_db, args=(db['id'],))
+            # threads.append(thread)
+            # thread.start()
 
-    dbServices = DBService.objects.filter(server_id=server_id).all()
-    db_serializer = DBServiceSerializer(dbServices, many=True).data
-    get_or_create_cache().lastDB[str(server_id)] = db_serializer
-    for db in db_serializer:
-        check_db(db['id'])
-        # thread = threading.Thread(target=check_db, args=(db['id'],))
-        # threads.append(thread)
-        # thread.start()
+        services = Service.objects.filter(server_id=server_id).all()
+        get_or_create_cache().lastService[str(server_id)] = ServiceSerializer(services, many=True).data
+        for service in services:
+            check_service(service.id)
+            # thread = threading.Thread(target=check_service, args=(service.id,))
+            # threads.append(thread)
+            # thread.start()
 
-    services = Service.objects.filter(server_id=server_id).all()
-    get_or_create_cache().lastService[str(server_id)] = ServiceSerializer(services, many=True).data
-    for service in services:
-        check_service(service.id)
-        # thread = threading.Thread(target=check_service, args=(service.id,))
-        # threads.append(thread)
-        # thread.start()
-
-    # for thread in threads:
-    #     thread.join()
-    print('finished test at ', datetime.datetime.now())
+        # for thread in threads:
+        #     thread.join()
+    else:
+        print('server has problem ', server_serializer)
 
 
 def check_service(service_id):
@@ -273,7 +284,6 @@ def do_action(action_id, server_id):
     action_serializer = ActionSerializer(action).data
     server = Server.objects.get(id=server_id)
     server_serializer = ServerSerializer(server).data
-    print('at : ', datetime.datetime.now(), 'doing action : ', action_id, )
     checked_server = check.CheckServer(
         host=server_serializer['host'],
         port=server_serializer['port'],
@@ -467,18 +477,32 @@ class CashLastData:
                     })
 
             summery['services'] = service_convertor
-        except KeyError as ke:
-            print(ke)
+            summery_list[server_id] = summery
         except Exception as ex:
-            print(ex)
-        summery_list.append(summery)
+            print('in get_server_summery', ex)
 
-    def get_summaries(self):
-        summaries = []
+    def get_summaries(self, oldSummery: dict):
+        summaries = dict()
         for server in self.lastServer:
+            old = oldSummery.get(server['id'], None)
+            if old is not None:
+                summaries[server['id']] = old
             self.get_server_summery(server_id=server['id'], summery_list=summaries)
         return summaries
 
     def save_summary(self):
+        serializer = CacheModelSerializer(CacheModel.objects.order_by('-created_at').first(), many=False).data
+        oldSummery = serializer['json']
+        if oldSummery is None:
+            oldSummery = dict()
+        jsonResponse = self.get_summaries(oldSummery)
+
         CacheModel.objects.all().delete()
-        CacheModel.objects.create(json=self.get_summaries())
+        self.lastServerInfo.clear()
+        self.lastServiceHistory.clear()
+        self.lastService.clear()
+        self.lastServer.clear()
+        self.lastDB.clear()
+        self.lastDBHistory.clear()
+
+        CacheModel.objects.create(json=jsonResponse)
