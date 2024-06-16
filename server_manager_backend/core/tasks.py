@@ -66,10 +66,12 @@ def start_scheduler(do_every: int = 4):
     #     password=password
     # )
     # check_server.check_server()
-    _scheduler = Scheduler()
-    _job = _scheduler.every(do_every).seconds.do(check_servers)
-    _scheduler.run_continuously()
-    start_backup_scheduler()
+    developMode = True
+    if not developMode:
+        _scheduler = Scheduler()
+        _job = _scheduler.every(do_every).seconds.do(check_servers)
+        _scheduler.run_continuously()
+        start_backup_scheduler()
 
 
 def start_backup_scheduler(hours: str = '18', minutes: str = '00'):
@@ -491,9 +493,10 @@ class CashLastData:
         except Exception as ex:
             print('in get_server_summery', ex)
             summery = dict()
-            if summery_list.get(server_id,None) is None:
+            if summery_list.get(server_id, None) is None:
                 for server in self.lastServer:
                     if server['id'] == str(server_id):
+                        summery['id'] = str(server_id)
                         summery['config'] = {
                             'id': str(server_id),
                             'name': server['name'],
@@ -501,6 +504,16 @@ class CashLastData:
                             'port': server['port'],
                             'username': server['username'],
                             'password': server['password'],
+                        }
+                        summery['info'] = {
+                            'id': '',
+                            'server': server['name'],
+                            'ram': 0,
+                            'memory': 0,
+                            'cpu': 0,
+                            'lastUpdate': 'امکان اتصال موجود نیست',
+                            'lastBackup': None,
+                            'status': []
                         }
                         summery_list[server_id] = summery
                         return summery
@@ -512,7 +525,6 @@ class CashLastData:
             if old is not None:
                 summaries[server['id']] = old
             temp = self.get_server_summery(server_id=server['id'], summery_list=summaries)
-            print('for server ', server, 'temp ', temp)
         return summaries
 
     def save_summary(self):

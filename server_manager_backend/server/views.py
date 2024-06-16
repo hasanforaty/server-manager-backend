@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from rest_framework import viewsets, mixins
+from rest_framework.pagination import PageNumberPagination
 
 from server.models import Server, Action, Service, DBService
 from server.serializers import ServerSerializer, ActionSerializer, ServiceSerializer, DBServiceSerializer
@@ -41,6 +42,7 @@ class ServiceViewSet(
 ):
     queryset = Service.objects.all()
     serializer_class = ServiceSerializer
+    pagination_class = None
 
 
 class DBServiceViewSet(

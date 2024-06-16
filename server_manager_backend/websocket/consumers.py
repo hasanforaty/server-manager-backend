@@ -1,13 +1,11 @@
 import asyncio
 import json
-import time
 
-import schedule
 from asgiref.sync import sync_to_async, async_to_sync
 from channels.exceptions import StopConsumer
 from channels.generic.websocket import AsyncWebsocketConsumer
+
 from core.models import CacheModel
-from schedule import Scheduler
 
 
 class ServerSummeryConsumer(AsyncWebsocketConsumer):
@@ -17,8 +15,8 @@ class ServerSummeryConsumer(AsyncWebsocketConsumer):
         while int(1) in [1]:
             try:
                 summery_list = await sync_to_async(CacheModel.objects.all().order_by('-created_at').first)()
-                if summery_list:
 
+                if summery_list:
                     my_json: dict = summery_list.json
                     my_response = []
 
@@ -33,7 +31,8 @@ class ServerSummeryConsumer(AsyncWebsocketConsumer):
                     # #     thread.join()
                     for key in my_json.keys():
                         my_response.append(my_json.get(key))
-                    my_response.sort(key=lambda summery: summery['id'])
+                    # my_response.sort(key=lambda summery: summery['id'])
+                    # print('my_response : ', my_response)
                     await self.send(text_data=json.dumps(my_response))
                     # Random.objects.create(text="test")
                     await asyncio.sleep(4)

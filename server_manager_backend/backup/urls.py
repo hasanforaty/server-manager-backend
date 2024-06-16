@@ -4,7 +4,7 @@ from rest_framework import routers
 from backup import views
 
 router = routers.DefaultRouter()
-router.register('folder', views.FolderBackupViewSet, basename='folderBackup')
+router.register(r'folder', views.FolderBackupViewSet, basename='folderBackup')
 
 urlpatterns = [
     path('', include(router.urls))
