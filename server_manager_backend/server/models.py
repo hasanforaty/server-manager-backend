@@ -30,7 +30,8 @@ class Service(models.Model):
 class DBService(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True)
     server = models.ForeignKey(Server, on_delete=models.SET_NULL, null=True)
-    name = models.CharField(max_length=32)
+    dbName = models.CharField(max_length=32)
+    serviceName = models.CharField(max_length=32,default='')
     host = models.CharField(max_length=32)
     port = models.IntegerField()
     username = models.CharField(max_length=32)
@@ -38,7 +39,7 @@ class DBService(models.Model):
     backup = models.BooleanField()
 
     def __str__(self):
-        return self.id + " - " + self.name + " - " + self.host + " - " + self.username + " - " + self.backup
+        return self.id + " - " + self.dbName + " - " + self.host + " - " + self.username + " - " + self.backup
 
 
 class Action(models.Model):
