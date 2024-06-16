@@ -70,3 +70,16 @@ class DBServiceSerializer(serializers.ModelSerializer):
         model = DBService
         fields = '__all__'
         read_only_fields = ['id', 'server']
+
+
+class DBServiceRetrieveSerializer(serializers.ModelSerializer):
+    # server = serializers.PrimaryKeyRelatedField(
+    #     queryset=Server.objects.all(),
+    #     required=True
+    # )
+    server = ServerSerializer(many=False, read_only=True)
+
+    class Meta:
+        model = DBService
+        fields = '__all__'
+        read_only_fields = ['id', 'server']
