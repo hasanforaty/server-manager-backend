@@ -15,7 +15,12 @@ class CheckServer:
 
     def check_server(self):
         try:
-            connection = ca.getOrCreateConnection(self.host, port=self.port, username=self.username, password=self.password)
+            connection = ca.getOrCreateConnection(
+                self.host,
+                port=self.port,
+                username=self.username,
+                password=self.password
+            )
             channel = connection.invoke_shell()
             channel.close()
             return True

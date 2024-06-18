@@ -19,7 +19,7 @@ class Server(models.Model):
 class Service(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True)
     server = models.ForeignKey(Server, on_delete=models.SET_NULL, null=True)
-    name = models.CharField(max_length=32)
+    serviceName = models.CharField(max_length=32)
     command = models.TextField()
     contain = models.TextField()
 

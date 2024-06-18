@@ -221,7 +221,7 @@ def check_db(db_id):
         password=server_serializer['password']
     )
     checked = checked_server.check_database(
-        database_name=db_serializer['name'],
+        database_name=db_serializer['serviceName'],
         username=db_serializer['username'],
         password=db_serializer['password']
     )
@@ -452,7 +452,7 @@ class CashLastData:
                 service_convertor.append({
                     'id': str(service['id']),
                     'type': 'سرور',
-                    'serviceName': service['name'],
+                    'serviceName': service['serviceName'],
                     'command': service['command'],
                     'contain': service['contain'],
                 })
@@ -463,14 +463,14 @@ class CashLastData:
                     else:
                         status = 'red'
                     summery['info'].get('status').append({
-                        'name': service['name'],
+                        'name': service['serviceName'],
                         'status': status
                     })
             for database in databases:
                 service_convertor.append({
                     'id': str(database['id']),
                     'type': 'دیتابیس',
-                    'serviceName': database['name'],
+                    'serviceName': database['serviceName'],
                     'username': database['username'],
                     'password': database['password'],
                     'host': database['host'],
@@ -483,7 +483,7 @@ class CashLastData:
                     else:
                         status = 'red'
                     summery['info'].get('status').append({
-                        'name': database['name'],
+                        'name': database['serviceName'],
                         'status': status
                     })
 
