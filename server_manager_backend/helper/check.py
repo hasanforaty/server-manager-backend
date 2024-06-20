@@ -42,9 +42,17 @@ class CheckServer:
                                   password=password,
                                   dbname=database_name)
                 pd.read_sql_query(sql, conn)
-                return True
+                return {
+                    'success': True,
+                    'log': '',
+                    'date': datetime.datetime.now()
+                }
         except BaseException as ex:
-            return False
+            return {
+                'success': False,
+                'log': str(ex),
+                'date': datetime.datetime.now()
+            }
 
     def getServerInfo(self):
         client = ca.getOrCreateConnection(self.host, port=self.port, username=self.username, password=self.password)
@@ -71,7 +79,7 @@ class CheckServer:
         return {
             'success': success,
             'command': command,
-            'log': output,
+            'log': str(output),
             'date': datetime.datetime.now()
         }
 
@@ -217,7 +225,11 @@ class CheckServer:
         expectedOutput = "'{}' -> '{}/{}'".format(path, to, dic_name)
         if expectedOutput in output:
             re = True
-        return re
+        return {
+            'success': re,
+            'log': str(output),
+            'date': datetime.datetime.now()
+        }
 
     def check_backupDirectory(self, to_path: str):
         connection = ca.getOrCreateConnection(self.host, port=self.port, username=self.username, password=self.password)

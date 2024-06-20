@@ -21,6 +21,14 @@ _connections_time = dict()
 def getOrCreateConnection(host, port, username, password) -> paramiko.client.SSHClient:
     key = "{}:{}:{}".format(host, port, username)
     connection: paramiko.SSHClient | None = _connections.get(key, None)
+
+    if connection is not None:
+        try:
+            connection.exec_command('ls')
+        except Exception as ex:
+            print('connection error', ex)
+            _connections.pop(key)
+            connection = None
     if connection is None:
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())

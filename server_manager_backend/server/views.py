@@ -23,6 +23,19 @@ class ServerViewSet(
     pagination_class = None
 
 
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="serverId",
+                type=OpenApiTypes.UUID,
+                description="actions of certen server",
+                required=False,
+                location=OpenApiParameter.QUERY
+            )
+        ]
+    )
+)
 class ActionsViewSet(
     viewsets.GenericViewSet,
     mixins.CreateModelMixin,
@@ -33,6 +46,17 @@ class ActionsViewSet(
 ):
     queryset = Action.objects.all()
     serializer_class = ActionSerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        queryset = self.queryset
+        serverId = self.request.query_params.get('serverId')
+        try:
+            if serverId is not None:
+                queryset = queryset.filter(server__id=serverId)
+        except Exception as e:
+            raise ValidationError(e)
+        return queryset
 
 
 @extend_schema_view(
