@@ -2,6 +2,7 @@ import datetime
 import threading
 import time
 
+import pytz
 import schedule
 from django.db.models import QuerySet
 from schedule import Scheduler
@@ -74,9 +75,9 @@ def start_scheduler(do_every: int = 4):
         start_backup_scheduler()
 
 
-def start_backup_scheduler(hours: str = '18', minutes: str = '00'):
+def start_backup_scheduler(hours: str = '13', minutes: str = '13'):
     global _backup_jobs
-    _backup_jobs = _scheduler.every().day.at(f'{hours}:{minutes}').do(do_backup_scheduler)
+    _backup_jobs = _scheduler.every().day.at(f'{hours}:{minutes}', "Iran").do(do_backup_scheduler)
 
 
 def stop_scheduler():
@@ -325,26 +326,54 @@ def do_action(action_id, server_id):
 
 
 def do_backup_scheduler():
+    print('start backup.....', datetime.datetime.now())
     threads = []
-    DBs = DBService.objects.filter(backup=True).all()
+    DBs = DBServiceSerializer(DBService.objects.filter(backup=True).all(), many=True).data
     for DB in DBs:
-        thread = threading.Thread(target=backup_database, args=(DB,))
+        thread = threading.Thread(target=backup_database, args=(DB['id'],))
         threads.append(thread)
         thread.start()
 
-    folders = FolderBackup.objects.all()
+    folders = BackupSerializer(FolderBackup.objects.all(), many=True).data
     for folder in folders:
-        thread = threading.Thread(target=backup_folder, args=(folder,))
+        thread = threading.Thread(target=backup_folder, args=(folder['id'],))
         threads.append(thread)
         thread.start()
 
     for thread in threads:
         thread.join()
 
+    print('end backup.....', datetime.datetime.now())
+
 
 def backup_database(db_id):
-    print("start backup databse ")
-    pass
+    db = DBService.objects.get(id=db_id)
+    server = db.server
+    server_serializer = ServerSerializer(server).data
+    checked_server = check.CheckServer(
+        host=server_serializer['host'],
+        port=server_serializer['port'],
+        username=server_serializer['username'],
+        password=server_serializer['password']
+    )
+    backup_result = checked_server.backup_database(
+        database_user=db.username,
+        database_password=db.password,
+        database_name=db.dbName,
+        database_host=db.host,
+        database_port=db.port
+    )
+    serializer = BackupHistorySerializer(
+        data={
+            'status': backup_result['success'],
+            'type': 'backup',
+            'log': backup_result['log']
+        }
+    )
+    if serializer.is_valid():
+        serializer.save(service=db)
+    else:
+        print(serializer.errors)
 
 
 def backup_folder(folder_id):

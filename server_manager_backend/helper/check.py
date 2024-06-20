@@ -183,16 +183,25 @@ class CheckServer:
         connection = client.invoke_shell()
         channel_data = ''
         send_pass = False
+        send_command = False
         try:
             while True:
                 if connection.recv_ready():
-                    channel_data += str(connection.recv(9999))
-                    print(channel_data)
+                    received = str(connection.recv(9999))
+                    channel_data += received
+                    print(received)
+                    if send_command and channel_data.endswith("~# '"):
+                        return {
+                            'success': False,
+                            'log': str(channel_data),
+                            'date': datetime.datetime.now()
+                        }
                 else:
                     continue
                 if channel_data.endswith("~# '"):
+                    send_command = True
                     connection.send(
-                        f"pg_dump -h {database_host} -d {database_name} -U {database_user} -p {database_port} -f backup{datetime.datetime.now()}.sql \n")
+                        f"pg_dump -h {database_host} -d {database_name} -U {database_user} -p {database_port} -f backup_{database_name}_{datetime.datetime.now().day}.sql \n")
                 elif channel_data.endswith("Password: '"):
                     connection.send(f'{database_password}\n')
                     send_pass = True
@@ -201,14 +210,58 @@ class CheckServer:
                     while True:
                         if connection.recv_ready():
                             channel_data += str(connection.recv(9999))
+                            if channel_data.endswith("~# '") and self.check_backupDB(dbName=database_name):
+                                return {
+                                    'success': True,
+                                    'log': str(channel_data),
+                                    'date': datetime.datetime.now()
+                                }
+                            else:
+                                return {
+                                    'success': False,
+                                    'log': str(channel_data),
+                                    'date': datetime.datetime.now()
+                                }
                         else:
                             continue
-                        if channel_data.endswith("~# '"):
-                            return True
         except Exception as ex:
-            return False
+            return {
+                'success': False,
+                'log': str(ex) + '\n' + channel_data,
+                'date': datetime.datetime.now()
+            }
         finally:
             connection.close()
+
+    def check_backupDB(self, dbName):
+        connection = ca.getOrCreateConnection(self.host, port=self.port, username=self.username, password=self.password)
+        stdin, stdout, stderr = connection.exec_command("ls -lt ")
+        output = ""
+        contain = f"backup_{dbName}_{datetime.datetime.now().day}.sql"
+        for line in stdout:
+            output += line
+        output_list = output.split('\n')
+        """
+        total 24
+        drwx------ 13 root root      4096 Jun 20 09:33 .
+        drwxr-xr-x 20 root root      4096 Feb 14  2023 ..
+        -rw-r--r--  1 root root 712018099 Jun 20 09:21 backup20.sql
+        -rw-r--r--  1 root root 712018099 Jun 20 09:34 backup_map2_20.sql
+        -rw-r--r--  1 root root 712018099 Jun 20 09:07 backup.sql
+        """
+        index = 0
+        if 'total' in output_list[index]:
+            index += 1
+        if len(output_list) < 2:
+            return False
+        latest_backup_entry = output_list[index].split()
+        """
+        ['-rw-r--r--', '1', 'root', 'root', '712018099', 'Jun', '20', '09:34', 'backup_map2_20.sql']
+        """
+        if contain in latest_backup_entry:
+            print("ok")
+            return True
+        return False
 
     def backupDirectory(self, path: str, to: str):
         connection = ca.getOrCreateConnection(self.host, port=self.port, username=self.username, password=self.password)
