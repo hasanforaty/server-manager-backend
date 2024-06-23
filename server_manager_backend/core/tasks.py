@@ -2,20 +2,19 @@ import datetime
 import threading
 import time
 
-import pytz
 import schedule
 from django.db.models import QuerySet
 from schedule import Scheduler
-from core.serializers import CacheModelSerializer
 
+from backup.models import FolderBackup
+from backup.serializers import BackupSerializer
+from core.models import CacheModel
+from core.serializers import CacheModelSerializer
 from helper import check
 from history.serializers import ServerInfoSerializer, ServiceHistorySerializer, ActionHistorySerializer, \
     BackupHistorySerializer
 from server.models import Server, DBService, Action, Service
 from server.serializers import ServerSerializer, DBServiceSerializer, ActionSerializer, ServiceSerializer
-from backup.models import FolderBackup
-from backup.serializers import BackupSerializer
-from core.models import CacheModel
 
 
 def run_continuously(self, interval=1):
@@ -75,7 +74,7 @@ def start_scheduler(do_every: int = 4):
         start_backup_scheduler()
 
 
-def start_backup_scheduler(hours: str = '13', minutes: str = '13'):
+def start_backup_scheduler(hours: str = '11', minutes: str = '14'):
     global _backup_jobs
     _backup_jobs = _scheduler.every().day.at(f'{hours}:{minutes}', "Iran").do(do_backup_scheduler)
 
@@ -114,6 +113,8 @@ def check_servers():
         cashed.clear_cache()
         print('end creating summary ............ ', datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         print('end checking ............ ', datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        # for conn in connections.all():
+        #     conn.close()
     except Exception as e:
         print("restart Scheduler")
         restart_scheduler()

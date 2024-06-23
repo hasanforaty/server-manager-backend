@@ -76,6 +76,8 @@ class CheckServer:
             success = True
         else:
             success = False
+            for line in stderr:
+                output += line
         return {
             'success': success,
             'command': command,
@@ -278,6 +280,9 @@ class CheckServer:
         expectedOutput = "'{}' -> '{}/{}'".format(path, to, dic_name)
         if expectedOutput in output:
             re = True
+        else:
+            for line in stderr:
+                output += line
         return {
             'success': re,
             'log': str(output),
