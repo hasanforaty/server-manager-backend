@@ -6,6 +6,16 @@ import datetime
 import helper.cache_connection as ca
 
 
+def get_backup_directory(path):
+    dbPath = path
+    if dbPath.startswith('/'):
+        dbPath = dbPath[1:]
+    if dbPath.endswith('/'):
+        dbPath = dbPath[:-1]
+    directory = f'{dbPath}/' + datetime.datetime.now().strftime("%Y-%m-%d")
+    return directory
+
+
 class CheckServer:
     def __init__(self, host, port, username, password):
         self.host = host
@@ -179,20 +189,22 @@ class CheckServer:
     #             return True
     #     except BaseException as ex:
     #         return False
-
-    def backup_database(self, database_name, database_password, database_user, database_host, database_port):
+    def backup_database(self, database_name, database_password, database_user, database_host, database_port, dbPath):
         client = ca.getOrCreateConnection(self.host, port=self.port, username=self.username, password=self.password)
         connection = client.invoke_shell()
         channel_data = ''
         send_pass = False
         send_command = False
+        go_to_directory = False
+        directory = get_backup_directory(dbPath)
+
         try:
             while True:
                 if connection.recv_ready():
                     received = str(connection.recv(9999))
                     channel_data += received
                     print(received)
-                    if send_command and channel_data.endswith("~# '"):
+                    if send_command and channel_data.endswith("# '"):
                         return {
                             'success': False,
                             'log': str(channel_data),
@@ -200,10 +212,14 @@ class CheckServer:
                         }
                 else:
                     continue
-                if channel_data.endswith("~# '"):
-                    send_command = True
-                    connection.send(
-                        f"pg_dump -h {database_host} -d {database_name} -U {database_user} -p {database_port} -f backup_{database_name}_{datetime.datetime.now().day}.sql \n")
+                if channel_data.endswith("# '"):
+                    if not go_to_directory:
+                        go_to_directory = True
+                        connection.send(f'mkdir -p {directory} && cd $_ \n')
+                    else:
+                        send_command = True
+                        connection.send(
+                            f"pg_dump -h {database_host} -d {database_name} -U {database_user} -p {database_port} -f backup_{database_name}.sql \n")
                 elif channel_data.endswith("Password: '"):
                     connection.send(f'{database_password}\n')
                     send_pass = True
@@ -212,7 +228,8 @@ class CheckServer:
                     while True:
                         if connection.recv_ready():
                             channel_data += str(connection.recv(9999))
-                            if channel_data.endswith("~# '") and self.check_backupDB(dbName=database_name):
+                            if channel_data.endswith("# '") and self.check_backupDB(dbName=database_name,
+                                                                                    dbPath=dbPath):
                                 return {
                                     'success': True,
                                     'log': str(channel_data),
@@ -235,11 +252,12 @@ class CheckServer:
         finally:
             connection.close()
 
-    def check_backupDB(self, dbName):
+    def check_backupDB(self, dbName, dbPath):
         connection = ca.getOrCreateConnection(self.host, port=self.port, username=self.username, password=self.password)
-        stdin, stdout, stderr = connection.exec_command("ls -lt ")
+        directory = get_backup_directory(path=dbPath)
+        stdin, stdout, stderr = connection.exec_command(f"cd {directory} && ls -lt ")
         output = ""
-        contain = f"backup_{dbName}_{datetime.datetime.now().day}.sql"
+        contain = f"backup_{dbName}.sql"
         for line in stdout:
             output += line
         output_list = output.split('\n')

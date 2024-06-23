@@ -74,7 +74,7 @@ def start_scheduler(do_every: int = 4):
         start_backup_scheduler()
 
 
-def start_backup_scheduler(hours: str = '11', minutes: str = '14'):
+def start_backup_scheduler(hours: str = '12', minutes: str = '27'):
     global _backup_jobs
     _backup_jobs = _scheduler.every().day.at(f'{hours}:{minutes}', "Iran").do(do_backup_scheduler)
 
@@ -362,7 +362,8 @@ def backup_database(db_id):
         database_password=db.password,
         database_name=db.dbName,
         database_host=db.host,
-        database_port=db.port
+        database_port=db.port,
+        dbPath=db.backupPath,
     )
     serializer = BackupHistorySerializer(
         data={
