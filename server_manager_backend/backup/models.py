@@ -22,4 +22,4 @@ class CheckFolderBackup(models.Model):
     path = models.TextField()
     pattern = models.CharField(max_length=64)
     server = models.ForeignKey(Server, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(default=timezone.now, editable=True)
+    created_at = models.DateTimeField(auto_now_add=True)
