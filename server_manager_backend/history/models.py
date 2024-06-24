@@ -2,10 +2,9 @@ import uuid
 
 from django.core.validators import MaxValueValidator
 from django.db import models
-from django.forms import JSONField
 
+from backup.models import FolderBackup, CheckFolderBackup
 from server.models import Action, Server, Service, DBService
-from backup.models import FolderBackup
 
 
 class ActionHistory(models.Model):
@@ -51,6 +50,7 @@ class BackupHistory(models.Model):
     log = models.JSONField(null=True, blank=True, default='')
     service = models.ForeignKey(DBService, blank=True, null=True, on_delete=models.SET_NULL)
     folder = models.ForeignKey(FolderBackup, blank=True, null=True, on_delete=models.SET_NULL)
+    checkFolder = models.ForeignKey(CheckFolderBackup, blank=True, null=True, on_delete=models.SET_NULL)
     type = models.CharField(max_length=32, choices=(('backup', 'Backup'), ('folder', 'Folder')))
     created_at = models.DateTimeField(auto_now_add=True)
 

@@ -1,7 +1,7 @@
 from rest_framework import mixins, viewsets
 
-from backup.serializers import BackupSerializer, BackupGetSerializer
-from backup.models import FolderBackup
+from backup.serializers import BackupSerializer, BackupGetSerializer,CheckBackupSerializer,CheckFolderBackupGetSerializer
+from backup.models import FolderBackup,CheckFolderBackup
 
 
 class FolderBackupViewSet(
@@ -20,3 +20,23 @@ class FolderBackupViewSet(
             return BackupGetSerializer(*args, **kwargs)
         else:
             return BackupSerializer(*args, **kwargs)
+
+
+class CheckFolderBackupViewSet(
+    mixins.CreateModelMixin,
+    mixins.DestroyModelMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    viewsets.GenericViewSet,
+
+):
+    serializer_class = CheckBackupSerializer
+    queryset = CheckFolderBackup.objects.all()
+    pagination_class = None
+
+    def get_serializer(self, *args, **kwargs):
+        if self.action == 'retrieve' or self.action == 'list':
+            return CheckFolderBackupGetSerializer(*args, **kwargs)
+        else:
+            return CheckBackupSerializer(*args, **kwargs)

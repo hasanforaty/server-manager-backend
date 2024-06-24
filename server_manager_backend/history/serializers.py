@@ -119,6 +119,7 @@ class BackupHistorySerializer(serializers.ModelSerializer):
             'status',
             'service',
             'folder',
+            'checkFolder',
             'type',
             'created_at',
             'log'
@@ -127,5 +128,6 @@ class BackupHistorySerializer(serializers.ModelSerializer):
             'id',
             'service',
             'folder',
+            'checkFolder',
             'created_at'
         ]

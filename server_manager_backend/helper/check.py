@@ -337,6 +337,43 @@ class CheckServer:
             return True
         return False
 
+    def check_Folder_backupDirectory(self, to_path: str, pattern: str, check_date: datetime.date):
+        connection = ca.getOrCreateConnection(self.host, port=self.port, username=self.username, password=self.password)
+        if to_path.endswith('/'):
+            to_path = to_path[:-1]
+        if not to_path.startswith('/'):
+            to_path = '/' + to_path
+        stdin, stdout, stderr = connection.exec_command("cd ..{} && ls -lt ".format(to_path))
+        output = ""
+        current_day = check_date.strftime(pattern)
+        for line in stdout:
+            output += line
+        output_list = output.split('\n')
+        """
+        total 24
+        drwxr-xr-x 2 root root 4096 ژوئن    11 11:42 backup_2024_06_11_11:42
+        drwxr-xr-x 2 root root 4096 ژوئن    11 11:34 backup_2024_06_11_11:34
+        drwxr-xr-x 3 root root 4096 ژوئن    11 11:28 backup_2024_06_11_11:28
+        drwxr-xr-x 2 root root 4096 ژوئن    11 11:25 backup_2024_06_11_11:25
+        drwxr-xr-x 2 root root 4096 ژوئن    11 11:22 backup
+        -rwxr-xr-x 1 root root 1491 ژوئن    11 11:22 code.txt
+        """
+        index = 0
+        if 'total' in output_list[index]:
+            index += 1
+        if len(output_list) < 2:
+            return False
+        for line in output_list[index:]:
+            if current_day in line:
+                return True
+
+        # latest_backup_entry = output_list[index].split()
+        # print(latest_backup_entry)
+        # if current_day in latest_backup_entry:
+        #     print("ok")
+        #     return True
+        return False
+
     # def check_backupDirectory(self, from_path: str, to_path: str):
     #     connection = ca.getOrCreateConnection(self.host, port=self.port, username=self.username, password=self.password)
     #     if to_path.endswith('/'):

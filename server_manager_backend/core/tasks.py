@@ -6,11 +6,12 @@ import schedule
 from django.db.models import QuerySet
 from schedule import Scheduler
 
-from backup.models import FolderBackup
-from backup.serializers import BackupSerializer
+from backup.models import FolderBackup, CheckFolderBackup
+from backup.serializers import BackupSerializer, CheckBackupSerializer
 from core.models import CacheModel
 from core.serializers import CacheModelSerializer
 from helper import check
+from history.models import BackupHistory
 from history.serializers import ServerInfoSerializer, ServiceHistorySerializer, ActionHistorySerializer, \
     BackupHistorySerializer
 from server.models import Server, DBService, Action, Service
@@ -74,7 +75,7 @@ def start_scheduler(do_every: int = 4):
         start_backup_scheduler()
 
 
-def start_backup_scheduler(hours: str = '12', minutes: str = '27'):
+def start_backup_scheduler(hours: str = '15', minutes: str = '11'):
     global _backup_jobs
     _backup_jobs = _scheduler.every().day.at(f'{hours}:{minutes}', "Iran").do(do_backup_scheduler)
 
@@ -329,15 +330,21 @@ def do_action(action_id, server_id):
 def do_backup_scheduler():
     print('start backup.....', datetime.datetime.now())
     threads = []
-    DBs = DBServiceSerializer(DBService.objects.filter(backup=True).all(), many=True).data
-    for DB in DBs:
-        thread = threading.Thread(target=backup_database, args=(DB['id'],))
-        threads.append(thread)
-        thread.start()
+    # DBs = DBServiceSerializer(DBService.objects.filter(backup=True).all(), many=True).data
+    # for DB in DBs:
+    #     thread = threading.Thread(target=backup_database, args=(DB['id'],))
+    #     threads.append(thread)
+    #     thread.start()
+    #
+    # folders = BackupSerializer(FolderBackup.objects.all(), many=True).data
+    # for folder in folders:
+    #     thread = threading.Thread(target=backup_folder, args=(folder['id'],))
+    #     threads.append(thread)
+    #     thread.start()
 
-    folders = BackupSerializer(FolderBackup.objects.all(), many=True).data
-    for folder in folders:
-        thread = threading.Thread(target=backup_folder, args=(folder['id'],))
+    checkFolders = CheckBackupSerializer(CheckFolderBackup.objects.all(), many=True).data
+    for checkFolder in checkFolders:
+        thread = threading.Thread(target=check_folder_backup, args=(checkFolder['id'],))
         threads.append(thread)
         thread.start()
 
@@ -345,6 +352,50 @@ def do_backup_scheduler():
         thread.join()
 
     print('end backup.....', datetime.datetime.now())
+
+
+def check_folder_backup(check_folder_id):
+    print('start')
+    check_folder = CheckFolderBackup.objects.all().get(id=check_folder_id)
+    server = check_folder.server
+    server_serializer = ServerSerializer(server).data
+    checked_server = check.CheckServer(
+        host=server_serializer['host'],
+        port=server_serializer['port'],
+        username=server_serializer['username'],
+        password=server_serializer['password']
+    )
+    deform_history = BackupHistory.objects.filter(
+        checkFolder_id=check_folder_id,
+        status=False,
+        created_at__month=datetime.datetime.now().month
+    )
+    for his in deform_history:
+        result = checked_server.check_Folder_backupDirectory(
+            check_folder.path,
+            check_folder.pattern,
+            check_date=his.created_at
+        )
+        if result:
+            BackupHistorySerializer(his, data={
+                'status': result,
+            })
+
+    today = datetime.date.today()
+    result = checked_server.check_Folder_backupDirectory(check_folder.path,check_folder.pattern,today)
+    serializer = BackupHistorySerializer(
+        data={
+            'status': result,
+            'type': 'backup',
+            'log': ''
+        }
+    )
+    if serializer.is_valid():
+        serializer.save(checkFolder=check_folder)
+    else:
+        print(serializer.errors)
+
+
 
 
 def backup_database(db_id):
