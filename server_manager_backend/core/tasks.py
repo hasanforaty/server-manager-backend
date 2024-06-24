@@ -75,7 +75,7 @@ def start_scheduler(do_every: int = 4):
         start_backup_scheduler()
 
 
-def start_backup_scheduler(hours: str = '15', minutes: str = '11'):
+def start_backup_scheduler(hours: str = '08', minutes: str = '51'):
     global _backup_jobs
     _backup_jobs = _scheduler.every().day.at(f'{hours}:{minutes}', "Iran").do(do_backup_scheduler)
 
@@ -376,13 +376,18 @@ def check_folder_backup(check_folder_id):
             check_folder.pattern,
             check_date=his.created_at
         )
+        print('result : ', result)
         if result:
-            BackupHistorySerializer(his, data={
+            serializer = BackupHistorySerializer(his, data={
                 'status': result,
-            })
+            }, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+            else:
+                print(serializer.errors)
 
     today = datetime.date.today()
-    result = checked_server.check_Folder_backupDirectory(check_folder.path,check_folder.pattern,today)
+    result = checked_server.check_Folder_backupDirectory(check_folder.path, check_folder.pattern, today)
     serializer = BackupHistorySerializer(
         data={
             'status': result,
@@ -394,8 +399,6 @@ def check_folder_backup(check_folder_id):
         serializer.save(checkFolder=check_folder)
     else:
         print(serializer.errors)
-
-
 
 
 def backup_database(db_id):

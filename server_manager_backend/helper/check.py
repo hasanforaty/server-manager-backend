@@ -343,7 +343,7 @@ class CheckServer:
             to_path = to_path[:-1]
         if not to_path.startswith('/'):
             to_path = '/' + to_path
-        stdin, stdout, stderr = connection.exec_command("cd ..{} && ls -lt ".format(to_path))
+        stdin, stdout, stderr = connection.exec_command("cd {} && ls -lt ".format(to_path))
         output = ""
         current_day = check_date.strftime(pattern)
         for line in stdout:
