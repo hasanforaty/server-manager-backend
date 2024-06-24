@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 
 from backup import models
 from server.models import Server
@@ -31,6 +32,12 @@ class BackupSerializer(serializers.ModelSerializer):
     )
 
     # server = ServerSerializer(read_only=False)
+    def validate(self, attrs):
+        is_checking = attrs.get('is_checking', False)
+        destination = attrs.get('destination', '')
+        if (not is_checking) and (not destination):
+            raise ValidationError('Destination field is required')
+        return attrs
 
     class Meta:
         model = models.FolderBackup
@@ -44,7 +51,6 @@ class BackupSerializer(serializers.ModelSerializer):
             'is_checking',
             'pattern'
         ]
-
 
 # class CheckBackupSerializer(serializers.ModelSerializer):
 #     server = serializers.PrimaryKeyRelatedField(
