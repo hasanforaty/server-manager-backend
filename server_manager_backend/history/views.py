@@ -148,20 +148,21 @@ class ServiceHistoryViewSet(
                 required=False,
                 location=OpenApiParameter.QUERY,
             ),
-            OpenApiParameter(
-                name='check_folder',
-                type=OpenApiTypes.UUID,
-                description="id of check folder for  backup",
-                required=False,
-                location=OpenApiParameter.QUERY,
-            ),
+            # OpenApiParameter(
+            #     name='check_folder',
+            #     type=OpenApiTypes.UUID,
+            #     description="id of check folder for  backup",
+            #     required=False,
+            #     location=OpenApiParameter.QUERY,
+            # ),
         ]
     )
 )
 class BackupHistoryViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
-    viewsets.GenericViewSet
+    viewsets.GenericViewSet,
+    mixins.DestroyModelMixin
 ):
     queryset = BackupHistory.objects.all().order_by('-created_at')
     serializer_class = BackupHistorySerializer
@@ -170,14 +171,14 @@ class BackupHistoryViewSet(
         queryset = self.queryset
         service = self.request.query_params.get('service')
         folder = self.request.query_params.get('folder')
-        check_folder = self.request.query_params.get('check_folder')
+        # check_folder = self.request.query_params.get('check_folder')
         try:
             if service is not None:
                 queryset = queryset.filter(service_id=service)
             if folder is not None:
                 queryset = queryset.filter(folder_id=folder)
-            if check_folder is not None:
-                queryset = queryset.filter(checkFolder_id=check_folder)
+            # if check_folder is not None:
+            #     queryset = queryset.filter(checkFolder_id=check_folder)
             if folder is not None and service is not None:
                 raise ValidationError("folder and service can't both be asked")
         except Exception as ex:

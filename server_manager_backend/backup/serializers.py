@@ -19,7 +19,9 @@ class BackupGetSerializer(serializers.ModelSerializer):
             'path',
             'destination',
             'server',
-            'created_at'
+            'created_at',
+            'is_checking',
+            'pattern'
         ]
 
 
@@ -38,30 +40,32 @@ class BackupSerializer(serializers.ModelSerializer):
             'path',
             'destination',
             'server',
-            'created_at'
+            'created_at',
+            'is_checking',
+            'pattern'
         ]
 
 
-class CheckBackupSerializer(serializers.ModelSerializer):
-    server = serializers.PrimaryKeyRelatedField(
-        queryset=Server.objects.all(),
-    )
-
-    class Meta:
-        model = models.CheckFolderBackup
-        fields = [
-            'id',
-            'name',
-            'path',
-            'pattern',
-            'server',
-            'created_at'
-        ]
-
-
-class CheckFolderBackupGetSerializer(serializers.ModelSerializer):
-    server = ServerSerializer(read_only=False)
-
-    class Meta:
-        model = models.CheckFolderBackup
-        fields = '__all__'
+# class CheckBackupSerializer(serializers.ModelSerializer):
+#     server = serializers.PrimaryKeyRelatedField(
+#         queryset=Server.objects.all(),
+#     )
+#
+#     class Meta:
+#         model = models.CheckFolderBackup
+#         fields = [
+#             'id',
+#             'name',
+#             'path',
+#             'pattern',
+#             'server',
+#             'created_at'
+#         ]
+#
+#
+# class CheckFolderBackupGetSerializer(serializers.ModelSerializer):
+#     server = ServerSerializer(read_only=False)
+#
+#     class Meta:
+#         model = models.CheckFolderBackup
+#         fields = '__all__'
