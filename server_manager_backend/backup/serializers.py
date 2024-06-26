@@ -35,8 +35,11 @@ class BackupSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         is_checking = attrs.get('is_checking', False)
         destination = attrs.get('destination', '')
+        pattern = attrs.get('pattern', '')
         if (not is_checking) and (not destination):
-            raise ValidationError('Destination field is required')
+            raise ValidationError('destination field is required')
+        if is_checking and not pattern:
+            raise ValidationError('pattern field is required')
         return attrs
 
     class Meta:

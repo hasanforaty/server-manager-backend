@@ -3,13 +3,6 @@ from rest_framework import serializers
 from server.models import Server, Service, DBService, Action
 
 
-class ActionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Action
-        fields = '__all__'
-        read_only_fields = ['id', ]
-
-
 class ServerSerializer(serializers.ModelSerializer):
     # actions = ActionSerializer(
     #     many=True,
@@ -26,26 +19,40 @@ class ServerSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'host', 'port', 'username', 'password', 'actions')
         read_only_fields = ['id', 'actions']
 
-    # def addOrCreateAction(self, instance, actions):
-    #     for action in actions:
-    #         actionObject, created = Action.objects.get_or_create(action)
-    #         instance.actions.add(actionObject)
-    #
+    def addOrCreateAction(self, instance, actions):
+        for action in actions:
+            actionObject, created = Action.objects.get_or_create(action)
+            instance.actions.add(actionObject)
+
     # def create(self, validated_data):
     #     action = validated_data.pop('actions', [])
     #     server = Server.objects.create(**validated_data)
     #     self.addOrCreateAction(server, action)
     #     return server
-    #
-    # def update(self, instance, validated_data):
-    #     action = validated_data.pop('actions', [])
-    #     if action is not None:
-    #         instance.actions.clear()
-    #         self.addOrCreateAction(instance, action)
-    #     for att, value in validated_data.items():
-    #         setattr(instance, att, value)
-    #     instance.save()
-    #     return instance
+
+    def update(self, instance, validated_data):
+        action = validated_data.pop('actions', [])
+        if action is not None:
+            instance.actions.clear()
+            self.addOrCreateAction(instance, action)
+        for att, value in validated_data.items():
+            setattr(instance, att, value)
+        instance.save()
+        return instance
+
+
+class ActionSerializer(serializers.ModelSerializer):
+    servers = serializers.SerializerMethodField(read_only=False)
+
+    class Meta:
+        model = Action
+        fields = ['id', 'name', 'command', 'description', 'interval', 'servers']
+        read_only_fields = ['id']
+
+    def get_servers(self, obj):
+        servers = obj.server_set.all()  # Get all servers related to this action
+        return ServerSerializer(servers, many=True).data
+
 
 
 class ServiceSerializer(serializers.ModelSerializer):

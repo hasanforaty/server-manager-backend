@@ -67,7 +67,7 @@ def start_scheduler(do_every: int = 4):
     #     password=password
     # )
     # check_server.check_server()
-    developMode = False
+    developMode = True
     if not developMode:
         _scheduler = Scheduler()
         _job = _scheduler.every(do_every).seconds.do(check_servers)
@@ -75,7 +75,7 @@ def start_scheduler(do_every: int = 4):
         start_backup_scheduler()
 
 
-def start_backup_scheduler(hours: str = '10', minutes: str = '21'):
+def start_backup_scheduler(hours: str = '11', minutes: str = '54'):
     global _backup_jobs
     _backup_jobs = _scheduler.every().day.at(f'{hours}:{minutes}', "Iran").do(do_backup_scheduler)
 
@@ -312,7 +312,7 @@ def do_action(action_id, server_id):
     )
     result = checked_server.checkByCommand(
         command=action_serializer['command'],
-        contain=action_serializer['onSuccess']
+        contain=''
     )
     serializer = ActionHistorySerializer(
         data={

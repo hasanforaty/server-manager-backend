@@ -81,7 +81,7 @@ class CheckServer:
         success = False
         output = ''
         for line in stdout:
-            output += line
+            output += (line+'\n')
         if contain.lower() in output.lower():
             success = True
         else:

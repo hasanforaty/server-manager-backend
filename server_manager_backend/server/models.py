@@ -31,7 +31,7 @@ class DBService(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True)
     server = models.ForeignKey(Server, on_delete=models.SET_NULL, null=True)
     dbName = models.CharField(max_length=32)
-    serviceName = models.CharField(max_length=32,default='')
+    serviceName = models.CharField(max_length=32, default='')
     host = models.CharField(max_length=32)
     port = models.IntegerField()
     username = models.CharField(max_length=32)
@@ -47,9 +47,8 @@ class Action(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True)
     name = models.CharField(max_length=32)
     command = models.TextField()
-    onSuccess = models.TextField()
-    onError = models.TextField()
+    description = models.TextField(default='')
     interval = models.PositiveBigIntegerField()
 
     def __str__(self):
-        return self.id + '-' + self.command + ' - ' + self.onSuccess + ' - ' + self.onError
+        return self.id + '-' + self.command + ' - '
