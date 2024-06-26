@@ -24,6 +24,7 @@ class CheckServer:
         self.password = password
 
     def check_server(self):
+
         try:
             connection = ca.getOrCreateConnection(
                 self.host,
@@ -35,6 +36,7 @@ class CheckServer:
             channel.close()
             return True
         except Exception as ex:
+            print(ex)
             return False
 
     def check_database(self, database_name, username, password):

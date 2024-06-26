@@ -1,7 +1,10 @@
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter
-from rest_framework import viewsets, mixins
+from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiParameter, OpenApiResponse, OpenApiExample
+from rest_framework import viewsets, mixins, status
 from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
+from rest_framework.views import APIView
+import pandas as pd
 
 from server.models import Server, Action, Service, DBService
 from server.serializers import ServerSerializer, ActionSerializer, ServiceSerializer, DBServiceSerializer, \
@@ -53,7 +56,7 @@ class ActionsViewSet(
         serverId = self.request.query_params.get('serverId')
         try:
             if serverId is not None:
-                queryset = queryset.filter(server__id=serverId)
+                queryset = queryset.filter(servers__id=serverId)
         except Exception as e:
             raise ValidationError(e)
         return queryset
@@ -146,3 +149,54 @@ class DBServiceViewSet(
             return DBServiceRetrieveSerializer(*args, **kwargs)
         else:
             return DBServiceSerializer(*args, **kwargs)
+
+@extend_schema_view(
+    post=extend_schema(
+        description="Upload an Excel file to create multiple Server entries.",
+        request={"multipart/form-data": {"type": "object", "properties": {"file": {"type": "string", "format": "binary"}}}},
+        responses={
+            201: OpenApiResponse(description="Servers created successfully."),
+            400: OpenApiResponse(description="Bad request."),
+        },
+        examples=[
+            OpenApiExample(
+                "Example 1",
+                value={
+                    "file": "file content"
+                },
+                request_only=True,
+                response_only=False
+            ),
+        ],
+    ),
+)
+class ServerUploadView(APIView):
+    def post(self, request, *args, **kwargs):
+        file = request.FILES.get('file')
+        if not file:
+            return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            df = pd.read_excel(file)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        errors = []
+        for index, row in df.iterrows():
+            server_data = {
+                "name": row.get("host"),
+                "host": row.get("ip/domain"),
+                "port": row.get("port"),
+                "username": row.get("user"),
+                "password": row.get("password"),
+            }
+            serializer = ServerSerializer(data=server_data)
+            if serializer.is_valid():
+                serializer.save()
+            else:
+                errors.append({index: serializer.errors})
+
+        if errors:
+            return Response({"errors": errors}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"message": "Servers created successfully"}, status=status.HTTP_201_CREATED)

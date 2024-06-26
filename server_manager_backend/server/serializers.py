@@ -41,18 +41,45 @@ class ServerSerializer(serializers.ModelSerializer):
         return instance
 
 
+class CustomServerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Server
+        fields = ('id', 'name', 'host', 'port', 'username', 'password')
+        read_only_fields = ['id']
+
+
 class ActionSerializer(serializers.ModelSerializer):
-    servers = serializers.SerializerMethodField(read_only=False)
+    servers = CustomServerSerializer(many=True)
 
     class Meta:
         model = Action
         fields = ['id', 'name', 'command', 'description', 'interval', 'servers']
         read_only_fields = ['id']
 
-    def get_servers(self, obj):
-        servers = obj.server_set.all()  # Get all servers related to this action
-        return ServerSerializer(servers, many=True).data
+    def create(self, validated_data):
+        servers_data = validated_data.pop('servers')
+        action = Action.objects.create(**validated_data)
+        for server_data in servers_data:
+            server, created = Server.objects.get_or_create(**server_data)
+            action.servers.add(server)
+        return action
 
+    def update(self, instance, validated_data):
+        servers_data = validated_data.pop('servers')
+
+        instance.name = validated_data.get('name', instance.name)
+        instance.command = validated_data.get('command', instance.command)
+        instance.description = validated_data.get('description', instance.description)
+        instance.interval = validated_data.get('interval', instance.interval)
+        instance.save()
+
+        # Clear existing servers and add updated ones
+        instance.servers.clear()
+        for server_data in servers_data:
+            server, created = Server.objects.get_or_create(**server_data)
+            instance.servers.add(server)
+
+        return instance
 
 
 class ServiceSerializer(serializers.ModelSerializer):

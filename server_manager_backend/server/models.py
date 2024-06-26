@@ -10,7 +10,7 @@ class Server(models.Model):
     port = models.IntegerField()
     username = models.CharField(max_length=32)
     password = models.CharField(max_length=64)
-    actions = models.ManyToManyField(to='Action', blank=True, )
+    actions = models.ManyToManyField('Action', blank=True, related_name='servers')
 
     def __str__(self):
         return self.name + " - " + self.host + " - " + self.username

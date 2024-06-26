@@ -67,7 +67,7 @@ def start_scheduler(do_every: int = 4):
     #     password=password
     # )
     # check_server.check_server()
-    developMode = True
+    developMode = False
     if not developMode:
         _scheduler = Scheduler()
         _job = _scheduler.every(do_every).seconds.do(check_servers)
