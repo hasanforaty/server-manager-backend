@@ -31,7 +31,8 @@ class ServerSerializer(serializers.ModelSerializer):
     #     return server
 
     def update(self, instance, validated_data):
-        action = validated_data.pop('actions', [])
+        print('update is called ')
+        action = validated_data.pop('actions', None)
         if action is not None:
             instance.actions.clear()
             self.addOrCreateAction(instance, action)
@@ -57,25 +58,26 @@ class ActionSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
     def create(self, validated_data):
-        servers_data = validated_data.pop('servers')
+        servers_data = validated_data.pop('servers', None)
         action = Action.objects.create(**validated_data)
-        for server_data in servers_data:
-            server, created = Server.objects.get_or_create(**server_data)
-            action.servers.add(server)
+        if servers_data is not None:
+            for server_data in servers_data:
+                server, created = Server.objects.get_or_create(**server_data)
+                action.servers.add(server)
         return action
 
     def update(self, instance, validated_data):
-        servers_data = validated_data.pop('servers', [])
+        servers_data = validated_data.pop('servers', None)
+
+        # Clear existing servers and add updated ones
+        if servers_data is not None:
+            instance.servers.clear()
+            for server_data in servers_data:
+                server, created = Server.objects.get_or_create(**server_data)
+                instance.servers.add(server)
 
         for att, value in validated_data.items():
             setattr(instance, att, value)
-
-        # Clear existing servers and add updated ones
-        if instance.servers is not None:
-            instance.servers.clear()
-        for server_data in servers_data:
-            server, created = Server.objects.get_or_create(**server_data)
-            instance.servers.add(server)
 
         instance.save()
         return instance
