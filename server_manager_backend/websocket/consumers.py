@@ -35,7 +35,7 @@ class ServerSummeryConsumer(AsyncWebsocketConsumer):
                     # print('my_response : ', my_response)
                     await self.send(text_data=json.dumps(my_response))
                     # Random.objects.create(text="test")
-                    await asyncio.sleep(2)
+                    # await asyncio.sleep(2)
                 else:
                     await asyncio.sleep(2)
             except Exception as e:

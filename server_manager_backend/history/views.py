@@ -42,7 +42,7 @@ class ActionHistoryViewSet(
     queryset = ActionHistory.objects.all().order_by('-created_at')
 
     def get_queryset(self):
-        queryset = self.queryset
+        queryset = super().get_queryset()
         server = self.request.query_params.get('server')
         try:
             if server is not None:
@@ -77,7 +77,7 @@ class ServerInfoViewSet(
     queryset = ServerInfo.objects.all().order_by('-created_at')
 
     def get_queryset(self):
-        queryset = self.queryset
+        queryset = super().get_queryset()
         server = self.request.query_params.get('server')
         if server is not None:
             try:
@@ -116,7 +116,7 @@ class ServiceHistoryViewSet(
     serializer_class = ServiceHistorySerializer
 
     def get_queryset(self):
-        queryset = self.queryset
+        queryset = super().get_queryset()
         service = self.request.query_params.get('service')
         serviceDB = self.request.query_params.get('serviceDB')
         try:
@@ -168,7 +168,7 @@ class BackupHistoryViewSet(
     serializer_class = BackupHistorySerializer
 
     def get_queryset(self):
-        queryset = self.queryset
+        queryset = super().get_queryset()
         service = self.request.query_params.get('service')
         folder = self.request.query_params.get('folder')
         # check_folder = self.request.query_params.get('check_folder')

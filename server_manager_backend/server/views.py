@@ -7,8 +7,8 @@ from rest_framework.views import APIView
 import pandas as pd
 
 from server.models import Server, Action, Service, DBService
-from server.serializers import ServerSerializer, ActionSerializer, ServiceSerializer, DBServiceSerializer, \
-    DBServiceRetrieveSerializer
+from server.serializers import ServerSerializer, ActionGetSerializer, ServiceSerializer, DBServiceSerializer, \
+    DBServiceRetrieveSerializer, ActionSerializer
 
 
 # Create your views here.
@@ -48,18 +48,35 @@ class ActionsViewSet(
     mixins.ListModelMixin,
 ):
     queryset = Action.objects.all()
-    serializer_class = ActionSerializer
+    serializer_class = ActionGetSerializer
     pagination_class = None
 
+    # def get_queryset(self):
+    #     queryset = self.queryset
+    #     serverId = self.request.query_params.get('serverId')
+    #     try:
+    #         if serverId is not None:
+    #             queryset = queryset.filter(servers__id=serverId)
+    #     except Exception as e:
+    #         raise ValidationError(e)
+    #     return queryset
     def get_queryset(self):
-        queryset = self.queryset
+        queryset = super().get_queryset()
         serverId = self.request.query_params.get('serverId')
-        try:
-            if serverId is not None:
+
+        if serverId:
+            try:
                 queryset = queryset.filter(servers__id=serverId)
-        except Exception as e:
-            raise ValidationError(e)
+            except Exception as e:
+                raise ValidationError(e)
+
         return queryset
+
+    def get_serializer_class(self):
+        if self.action == 'list' or self.action == 'retrieve':
+            return ActionGetSerializer
+        else:
+            return ActionSerializer
 
 
 @extend_schema_view(
@@ -88,7 +105,7 @@ class ServiceViewSet(
     pagination_class = None
 
     def get_queryset(self):
-        queryset = self.queryset
+        queryset = super().get_queryset()
         serverId = self.request.query_params.get('serverId')
         try:
             if serverId is not None:
@@ -131,7 +148,7 @@ class DBServiceViewSet(
     pagination_class = None
 
     def get_queryset(self):
-        queryset = self.queryset
+        queryset = super().get_queryset()
         is_backup = self.request.query_params.get('backup')
         serverId = self.request.query_params.get('serverId')
         try:

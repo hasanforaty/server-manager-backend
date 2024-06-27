@@ -42,29 +42,19 @@ class ServerSerializer(serializers.ModelSerializer):
         return instance
 
 
-class CustomServerSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Server
-        fields = ('id', 'name', 'host', 'port', 'username', 'password')
-        read_only_fields = ['id']
-
+# class CustomServerSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Server
+#         fields = ('id', 'name', 'host', 'port', 'username', 'password')
+#         read_only_fields = ['id']
 
 class ActionSerializer(serializers.ModelSerializer):
-    servers = CustomServerSerializer(many=True)
+    servers = serializers.PrimaryKeyRelatedField(many=True, queryset=Server.objects.all())
 
     class Meta:
         model = Action
         fields = ['id', 'name', 'command', 'description', 'interval', 'servers']
         read_only_fields = ['id']
-
-    def create(self, validated_data):
-        servers_data = validated_data.pop('servers', None)
-        action = Action.objects.create(**validated_data)
-        if servers_data is not None:
-            for server_data in servers_data:
-                server, created = Server.objects.get_or_create(**server_data)
-                action.servers.add(server)
-        return action
 
     def update(self, instance, validated_data):
         servers_data = validated_data.pop('servers', None)
@@ -73,14 +63,34 @@ class ActionSerializer(serializers.ModelSerializer):
         if servers_data is not None:
             instance.servers.clear()
             for server_data in servers_data:
-                server, created = Server.objects.get_or_create(**server_data)
+                server, created = Server.objects.get_or_create(server_data)
                 instance.servers.add(server)
-
+        # print('validated ', validated_data)
         for att, value in validated_data.items():
+            # print('set instance', att, ' ', value, ' ', validated_data)
             setattr(instance, att, value)
 
+        # Save the instance
         instance.save()
+
+        # # Ensure the instance is fully refreshed from the database
+        # instance.refresh_from_db()
+        # print('instance', instance)
         return instance
+
+
+class ActionGetSerializer(serializers.ModelSerializer):
+    servers = ServerSerializer(many=True)
+
+    class Meta:
+        model = Action
+        fields = ['id', 'name', 'command', 'description', 'interval', 'servers']
+        read_only_fields = ['id', 'servers']
+
+    def create(self, validated_data):
+        validated_data.pop('servers', None)
+        action = Action.objects.create(**validated_data)
+        return action
 
 
 class ServiceSerializer(serializers.ModelSerializer):

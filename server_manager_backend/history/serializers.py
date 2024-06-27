@@ -1,12 +1,12 @@
 from rest_framework import serializers
 
 from history.models import ActionHistory, ServerInfo, ServiceHistory, BackupHistory
-from server.serializers import ActionSerializer, ServerSerializer, ServiceSerializer, DBServiceSerializer
+from server.serializers import ActionGetSerializer, ServerSerializer, ServiceSerializer, DBServiceSerializer
 from backup.serializers import BackupSerializer
 
 
 class ActionHistorySerializer(serializers.ModelSerializer):
-    action = ActionSerializer(
+    action = ActionGetSerializer(
         read_only=True
     )
     server = ServerSerializer(

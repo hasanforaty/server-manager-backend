@@ -51,4 +51,4 @@ class Action(models.Model):
     interval = models.PositiveBigIntegerField()
 
     def __str__(self):
-        return self.id + '-' + self.command + ' - '
+        return str(self.id) + '-' + self.command + ' - ' + self.description + ' - ' + self.name

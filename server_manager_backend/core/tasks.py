@@ -18,7 +18,7 @@ from history.models import BackupHistory
 from history.serializers import ServerInfoSerializer, ServiceHistorySerializer, ActionHistorySerializer, \
     BackupHistorySerializer
 from server.models import Server, DBService, Action, Service
-from server.serializers import ServerSerializer, DBServiceSerializer, ActionSerializer, ServiceSerializer
+from server.serializers import ServerSerializer, DBServiceSerializer, ActionGetSerializer, ServiceSerializer
 
 logging.basicConfig(level=logging.ERROR)
 logger = logging.getLogger(__name__)
@@ -313,7 +313,7 @@ def create_get_action_job(action_id, server_id, interval):
 
 def do_action(action_id, server_id):
     action = Action.objects.get(id=action_id)
-    action_serializer = ActionSerializer(action).data
+    action_serializer = ActionGetSerializer(action).data
     server = Server.objects.get(id=server_id)
     server_serializer = ServerSerializer(server).data
     checked_server = check.CheckServer(
