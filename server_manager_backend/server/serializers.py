@@ -65,20 +65,19 @@ class ActionSerializer(serializers.ModelSerializer):
         return action
 
     def update(self, instance, validated_data):
-        servers_data = validated_data.pop('servers')
+        servers_data = validated_data.pop('servers', [])
 
-        instance.name = validated_data.get('name', instance.name)
-        instance.command = validated_data.get('command', instance.command)
-        instance.description = validated_data.get('description', instance.description)
-        instance.interval = validated_data.get('interval', instance.interval)
-        instance.save()
+        for att, value in validated_data.items():
+            setattr(instance, att, value)
 
         # Clear existing servers and add updated ones
-        instance.servers.clear()
+        if instance.servers is not None:
+            instance.servers.clear()
         for server_data in servers_data:
             server, created = Server.objects.get_or_create(**server_data)
             instance.servers.add(server)
 
+        instance.save()
         return instance
 
 
