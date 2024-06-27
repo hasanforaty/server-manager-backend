@@ -1,10 +1,13 @@
 import datetime
+import logging
 import threading
 import time
 
 import schedule
+from django.db import connections, OperationalError
 from django.db.models import QuerySet
 from schedule import Scheduler
+from core.closable_connection_thread import ConnectionThread
 
 from backup.models import FolderBackup
 from backup.serializers import BackupSerializer
@@ -16,6 +19,9 @@ from history.serializers import ServerInfoSerializer, ServiceHistorySerializer, 
     BackupHistorySerializer
 from server.models import Server, DBService, Action, Service
 from server.serializers import ServerSerializer, DBServiceSerializer, ActionSerializer, ServiceSerializer
+
+logging.basicConfig(level=logging.ERROR)
+logger = logging.getLogger(__name__)
 
 
 def run_continuously(self, interval=1):
@@ -90,6 +96,8 @@ def stop_scheduler():
 
 
 def restart_scheduler(do_every: int = 4):
+    for conn in connections.all():
+        conn.close()
     stop_scheduler()
     start_scheduler(do_every=do_every)
 
@@ -103,7 +111,7 @@ def check_servers():
         get_or_create_cache().lastServer.clear()
         for value in servers:
             get_or_create_cache().lastServer.append(value)
-            thread = threading.Thread(target=check_server, args=(value['id'],))
+            thread = ConnectionThread(target=check_server, args=(value['id'],))
             threads.append(thread)
             thread.start()
 
@@ -114,8 +122,6 @@ def check_servers():
         cashed.clear_cache()
         print('end creating summary ............ ', datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         print('end checking ............ ', datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-        # for conn in connections.all():
-        #     conn.close()
     except Exception as e:
         print("restart Scheduler")
         restart_scheduler()
@@ -187,6 +193,12 @@ def check_server(server_id):
             #     thread.join()
         else:
             print('server has problem ', server_serializer)
+    except OperationalError as e:
+        print('restart scheduler ', e)
+        # for conn in connections.all():
+        #     logger.info('connection closed ', conn)
+        #     conn.close()
+        # restart_scheduler()
     except Exception as e:
         print('in task :', e)
 
@@ -332,7 +344,7 @@ def do_backup_scheduler():
     threads = []
     DBs = DBServiceSerializer(DBService.objects.filter(backup=True).all(), many=True).data
     for DB in DBs:
-        thread = threading.Thread(target=backup_database, args=(DB['id'],))
+        thread = ConnectionThread(target=backup_database, args=(DB['id'],))
         threads.append(thread)
         thread.start()
 
@@ -343,9 +355,9 @@ def do_backup_scheduler():
             is_checking = False
         print('is_checking', is_checking)
         if is_checking:
-            thread = threading.Thread(target=check_folder_backup, args=(folder['id'],))
+            thread = ConnectionThread(target=check_folder_backup, args=(folder['id'],))
         else:
-            thread = threading.Thread(target=backup_folder, args=(folder['id'],))
+            thread = ConnectionThread(target=backup_folder, args=(folder['id'],))
         threads.append(thread)
         thread.start()
 
@@ -478,7 +490,6 @@ def backup_folder(folder_id):
         )
         if serializer.is_valid():
             serializer.save(folder=folder)
-
 
 
 _cash = None
@@ -627,7 +638,7 @@ class CashLastData:
                             'ram': 0,
                             'memory': 0,
                             'cpu': 0,
-                            'lastUpdate': 'امکان اتصال موجود نیست',
+                            'lastUpdate': "امکان اتصال موجود نیست",
                             'lastBackup': None,
                             'status': []
                         }

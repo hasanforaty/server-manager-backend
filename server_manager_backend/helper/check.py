@@ -1,10 +1,14 @@
 import pandas as pd
+import paramiko
 import psycopg2 as db
 from sshtunnel import SSHTunnelForwarder
 import datetime
-
+import logging
 import helper.cache_connection as ca
 
+# Initialize the logger
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def get_backup_directory(path):
     dbPath = path
@@ -23,8 +27,27 @@ class CheckServer:
         self.username = username
         self.password = password
 
-    def check_server(self):
+    # def check_server(self):
+    #
+    #     try:
+    #         connection = ca.getOrCreateConnection(
+    #             self.host,
+    #             port=self.port,
+    #             username=self.username,
+    #             password=self.password
+    #         )
+    #         channel = connection.invoke_shell()
+    #         channel.close()
+    #         return True
+    #     except Exception as ex:
+    #         print(ex)
+    #         return False
+    def check_server(self) -> bool:
+        """
+        Checks the SSH server connection.
 
+        :return: True if the connection is successful, False otherwise
+        """
         try:
             connection = ca.getOrCreateConnection(
                 self.host,
@@ -32,12 +55,21 @@ class CheckServer:
                 username=self.username,
                 password=self.password
             )
-            channel = connection.invoke_shell()
-            channel.close()
-            return True
+            if connection is None:
+                return False
+            else:
+                channel = connection.invoke_shell()
+                channel.close()
+                return True
+        except paramiko.AuthenticationException:
+            logger.error("Authentication failed, please verify your credentials")
+        except paramiko.BadHostKeyException as badHostKeyException:
+            logger.error("Unable to verify server's host key: %s", badHostKeyException)
+        except paramiko.SSHException as sshException:
+            logger.error("Unable to establish SSH connection: %s", sshException)
         except Exception as ex:
-            print(ex)
-            return False
+            logger.error("Operation error: %s", ex)
+        return False
 
     def check_database(self, database_name, username, password):
         sql = "select * from information_schema.tables  limit 1000"
