@@ -73,7 +73,7 @@ def start_scheduler(do_every: int = 4):
     #     password=password
     # )
     # check_server.check_server()
-    developMode = True
+    developMode = False
     if not developMode:
         _scheduler = Scheduler()
         _job = _scheduler.every(do_every).seconds.do(check_servers)
@@ -81,7 +81,7 @@ def start_scheduler(do_every: int = 4):
         start_backup_scheduler()
 
 
-def start_backup_scheduler(hours: str = '11', minutes: str = '54'):
+def start_backup_scheduler(hours: str = '21', minutes: str = '00'):
     global _backup_jobs
     _backup_jobs = _scheduler.every().day.at(f'{hours}:{minutes}', "Iran").do(do_backup_scheduler)
 

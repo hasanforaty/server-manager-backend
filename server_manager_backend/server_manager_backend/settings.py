@@ -25,7 +25,8 @@ SECRET_KEY = 'django-insecure-!m2spw3c#%%d=bw&st*i)ck(^#*k9b&yeom_fq8q%9$9!kw6u)
 DEBUG = True
 
 ALLOWED_HOSTS = [
-    '0.0.0.0'
+    '0.0.0.0',
+    '192.168.0.3'
 ]
 
 # Application definition
@@ -146,8 +147,13 @@ CHANNEL_LAYERS = {
 }
 
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173'
+    'http://localhost:5173',
+    'http://192.168.0.3'
 ]
+
+SPECTACULAR_SETTINGS = {
+    'SERVE_INCLUDE_SCHEMA': False,
+}
 
 TIME_ZONE = 'Iran'
 
