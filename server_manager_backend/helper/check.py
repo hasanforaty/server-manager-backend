@@ -10,6 +10,7 @@ import helper.cache_connection as ca
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def get_backup_directory(path):
     dbPath = path
     if dbPath.startswith('/'):
@@ -18,6 +19,17 @@ def get_backup_directory(path):
         dbPath = dbPath[:-1]
     directory = f'{dbPath}/' + datetime.datetime.now().strftime("%Y-%m-%d")
     return directory
+
+
+class StatusResult:
+    status: bool
+    message: str
+    exception: Exception
+
+    def __init__(self, status: bool, message: str = '', exception: Exception = None):
+        self.status = status
+        self.message = message
+        self.exception = exception
 
 
 class CheckServer:
@@ -42,7 +54,7 @@ class CheckServer:
     #     except Exception as ex:
     #         print(ex)
     #         return False
-    def check_server(self) -> bool:
+    def check_server(self) -> StatusResult:
         """
         Checks the SSH server connection.
 
@@ -56,20 +68,26 @@ class CheckServer:
                 password=self.password
             )
             if connection is None:
-                return False
+
+                return StatusResult(status=False, message='cannot connect to server')
             else:
-                channel = connection.invoke_shell()
-                channel.close()
-                return True
-        except paramiko.AuthenticationException:
+                # channel = connection.invoke_shell()
+                # channel.close()
+                return StatusResult(status=True)
+        except paramiko.AuthenticationException as ex:
             logger.error("Authentication failed, please verify your credentials")
+            return StatusResult(status=False, message='Authentication failed, please verify your credentials',
+                                exception=ex)
         except paramiko.BadHostKeyException as badHostKeyException:
             logger.error("Unable to verify server's host key: %s", badHostKeyException)
+            return StatusResult(status=False, message="Unable to verify server's host key",
+                                exception=badHostKeyException)
         except paramiko.SSHException as sshException:
             logger.error("Unable to establish SSH connection: %s", sshException)
+            return StatusResult(status=False, message="Unable to establish SSH connectio", exception=sshException)
         except Exception as ex:
             logger.error("Operation error: %s", ex)
-        return False
+            return StatusResult(status=False, message="Operation error", exception=ex)
 
     def check_database(self, database_name, username, password):
         sql = "select * from information_schema.tables  limit 1000"
@@ -115,7 +133,7 @@ class CheckServer:
         success = False
         output = ''
         for line in stdout:
-            output += (line+'\n')
+            output += (line + '\n')
         if contain.lower() in output.lower():
             success = True
         else:
@@ -139,12 +157,16 @@ class CheckServer:
         for line in stdout:
             result = line.strip('\n')
             responses.append(result)
-        index = 0
-        for i in range(0, len(responses)):
-            if 'avg' in responses[i]:
-                index = i
-        split = responses[index + 1].split()
-        return 100 - float(split[len(split) - 1])
+        if len(responses) > 0:
+            index = 0
+            for i in range(0, len(responses)):
+                if 'avg' in responses[i]:
+                    index = i
+            split = responses[index + 1].split()
+            return 100 - float(split[len(split) - 1])
+        # for line in stderr:
+        #     print(line)
+        return 0
 
     def _getRAM(self, connection):
         stdin, stdout, stderr = connection.exec_command("""free -m""")
@@ -158,11 +180,13 @@ class CheckServer:
         for line in stdout:
             result = line.strip('\n')
             responses.append(result)
-        keys = responses[0].split()
-        values = responses[1].split()
-        for i in range(0, len(keys)):
-            answer[keys[i]] = values[i + 1]
-        return float(int(answer['used']) / float(answer['total'])) * 100
+        if len(responses) > 0:
+            keys = responses[0].split()
+            values = responses[1].split()
+            for i in range(0, len(keys)):
+                answer[keys[i]] = values[i + 1]
+            return float(int(answer['used']) / float(answer['total'])) * 100
+        return 0
 
     def _getMemory(self, connection):
         stdin, stdout, stderr = connection.exec_command("""df -ht ext4""")
@@ -175,34 +199,41 @@ class CheckServer:
         for line in stdout:
             result = line.strip('\n')
             responses.append(result)
-        keys = responses[0].split()
-        remain = len(responses) - 1
-        listValue = []
-        """
-        [
-        {'Filesystem': '/dev/sda2', 'Size': '98G', 'Used': '9.0G', 'Avail': '84G', 'Use%': '10%', 'Mounted': '/'},
-        {'Filesystem': '/dev/sda3', 'Size': '909G', 'Used': '341G', 'Avail': '523G', 'Use%': '40%', 'Mounted': '/var'}
-        ]
-        """
-        for index in range(0, remain):
-            answer = {}
-            values = responses[index + 1].split()
-            for i in range(0, len(keys) - 1):
-                answer[keys[i]] = values[i]
-            listValue.append(answer)
+        if len(responses) > 0:
 
-        size = 0
-        used = 0
-        for value in listValue:
-            size_temp = float(value['Size'][:-1])
-            if value['Size'].endswith('G'):
-                size_temp = size_temp * 1024
-            size += size_temp
-            used_temp = float(value['Used'][:-1])
-            if value['Used'].endswith('G'):
-                used_temp = used_temp * 1024
-            used += used_temp
-        return float(used / size) * 100
+            keys = responses[0].split()
+            remain = len(responses) - 1
+            listValue = []
+            """
+            [
+            {'Filesystem': '/dev/sda2', 'Size': '98G', 'Used': '9.0G', 'Avail': '84G', 'Use%': '10%', 'Mounted': '/'},
+            {'Filesystem': '/dev/sda3', 'Size': '909G', 'Used': '341G', 'Avail': '523G', 'Use%': '40%', 'Mounted': '/var'}
+            ]
+            """
+            for index in range(0, remain):
+                answer = {}
+                values = responses[index + 1].split()
+                for i in range(0, len(keys) - 1):
+                    answer[keys[i]] = values[i]
+                listValue.append(answer)
+
+            size = 0
+            used = 0
+            for value in listValue:
+                size_temp = float(value['Size'][:-1])
+                if value['Size'].endswith('G'):
+                    size_temp = size_temp * 1024
+                if value['Size'].endswith('T'):
+                    size_temp = size_temp * 1024*1024
+                size += size_temp
+                used_temp = float(value['Used'][:-1])
+                if value['Used'].endswith('G'):
+                    used_temp = used_temp * 1024
+                if value['Used'].endswith('T'):
+                    used_temp = used_temp * 1024 * 1024
+                used += used_temp
+            return float(used / size) * 100
+        return 0
 
     # def backup_database(self, database_name, username, password, ):
     #     # sql = "select * from information_schema.tables  limit 1000"

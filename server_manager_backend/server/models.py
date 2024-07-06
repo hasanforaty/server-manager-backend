@@ -5,11 +5,11 @@ from django.db import models
 
 class Server(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True)
-    name = models.CharField(max_length=32)
-    host = models.CharField(max_length=32)
+    name = models.CharField(max_length=255)
+    host = models.CharField(max_length=255)
     port = models.IntegerField()
-    username = models.CharField(max_length=32)
-    password = models.CharField(max_length=64)
+    username = models.CharField(max_length=255)
+    password = models.CharField(max_length=255)
     actions = models.ManyToManyField('Action', blank=True, related_name='servers')
 
     def __str__(self):
@@ -19,7 +19,7 @@ class Server(models.Model):
 class Service(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True)
     server = models.ForeignKey(Server, on_delete=models.SET_NULL, null=True)
-    serviceName = models.CharField(max_length=32)
+    serviceName = models.CharField(max_length=255)
     command = models.TextField()
     contain = models.TextField()
 
@@ -30,12 +30,12 @@ class Service(models.Model):
 class DBService(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True)
     server = models.ForeignKey(Server, on_delete=models.SET_NULL, null=True)
-    dbName = models.CharField(max_length=32)
-    serviceName = models.CharField(max_length=32, default='')
-    host = models.CharField(max_length=32)
+    dbName = models.CharField(max_length=255)
+    serviceName = models.CharField(max_length=255, default='')
+    host = models.CharField(max_length=255)
     port = models.IntegerField()
-    username = models.CharField(max_length=32)
-    password = models.CharField(max_length=64)
+    username = models.CharField(max_length=255)
+    password = models.CharField(max_length=255)
     backup = models.BooleanField()
     backupPath = models.TextField(default='SM/backup')
 
@@ -45,7 +45,7 @@ class DBService(models.Model):
 
 class Action(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, auto_created=True)
-    name = models.CharField(max_length=32)
+    name = models.CharField(max_length=255)
     command = models.TextField()
     description = models.TextField(default='')
     interval = models.PositiveBigIntegerField()

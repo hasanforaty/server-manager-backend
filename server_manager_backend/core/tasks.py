@@ -14,6 +14,7 @@ from backup.serializers import BackupSerializer
 from core.models import CacheModel
 from core.serializers import CacheModelSerializer
 from helper import check
+from helper.check import StatusResult
 from history.models import BackupHistory
 from history.serializers import ServerInfoSerializer, ServiceHistorySerializer, ActionHistorySerializer, \
     BackupHistorySerializer
@@ -158,7 +159,9 @@ def check_server(server_id):
             username=server_serializer['username'],
             password=server_serializer['password']
         )
-        if checked_server.check_server():
+        status = checked_server.check_server()
+        get_or_create_cache().serverStatus[str(server_id)] = status
+        if status.status:
             # s_thread = threading.Thread(target=check_server_info, args=(server_id,))
             check_server_info(server_id)
             # threads.append(s_thread)
@@ -511,6 +514,7 @@ class CashLastData:
         self.lastServer = []
         self.lastDB = dict()
         self.lastDBHistory = dict()
+        self.serverStatus = dict()
 
     def get_server_summery(self, server_id, summery_list):
         try:
@@ -553,6 +557,9 @@ class CashLastData:
             """
             if info is not None:
                 server = info['server']
+                server_status = self.serverStatus.get(str(server_id), None)
+                if server_status is None:
+                    server_status = StatusResult(status=True)
                 summery['config'] = {
                     'id': str(server_id),
                     'name': server['name'],
@@ -570,7 +577,8 @@ class CashLastData:
                     'cpu': info['cpu'],
                     'lastUpdate': lastUpdate,
                     'lastBackup': None,
-                    'status': []
+                    'status': [],
+                    'log': server_status.message
                 }
             services = self.lastService[str(server_id)]
             databases = self.lastDB[str(server_id)]
@@ -620,6 +628,9 @@ class CashLastData:
         except Exception as ex:
             print('in get_server_summery', ex)
             summery = dict()
+            server_status = self.serverStatus.get(str(server_id), None)
+            if server_status is None:
+                server_status = StatusResult(status=True)
             if summery_list.get(server_id, None) is None:
                 for server in self.lastServer:
                     if server['id'] == str(server_id):
@@ -638,12 +649,19 @@ class CashLastData:
                             'ram': 0,
                             'memory': 0,
                             'cpu': 0,
-                            'lastUpdate': "امکان اتصال موجود نیست",
+                            'lastUpdate': None,
                             'lastBackup': None,
-                            'status': []
+                            'status': [],
+                            'log': server_status.message + ' ' + str(server_status.exception)
                         }
                         summery_list[server_id] = summery
                         return summery
+            else:
+                try:
+                    summery_list.get(server_id)['info']['log'] = server_status.message + ' ' + str(
+                        server_status.exception)
+                except Exception as e:
+                    print('in summery', e)
 
     def get_summaries(self, oldSummery: dict):
         summaries = dict()

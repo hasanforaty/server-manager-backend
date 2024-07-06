@@ -75,15 +75,15 @@ def getOrCreateConnection(host: str, port: int, username: str, password: str) ->
             _connections[key] = client
             _connections_time[key] = datetime.datetime.now()
             connection = client
-        except paramiko.AuthenticationException:
-            logger.error("Authentication failed, please verify your credentials")
-        except paramiko.SSHException as sshException:
-            logger.error("Unable to establish SSH connection: %s", sshException)
-        except paramiko.BadHostKeyException as badHostKeyException:
-            logger.error("Unable to verify server's host key: %s", badHostKeyException)
+        # except paramiko.AuthenticationException:
+        #     logger.error("Authentication failed, please verify your credentials")
+        # except paramiko.BadHostKeyException as badHostKeyException:
+        #     logger.error("Unable to verify server's host key: %s", badHostKeyException)
+        # except paramiko.SSHException as sshException:
+        #     logger.error("Unable to establish SSH connection: %s", sshException)
         except Exception as ex:
             logger.error("Failed to connect: %s", ex)
-            raise
+            raise ex
     return connection
 
 
