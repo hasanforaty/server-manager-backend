@@ -82,7 +82,6 @@ def start_scheduler(do_every: int = 180, do_while: bool = True):
         """closing opened connections """
         continues.set()
     if not developMode:
-        TaskModel(active=True).save()
         scheduler = Scheduler()
         job = scheduler.every(do_every).seconds.do(check_servers)
         continues = scheduler.run_continuously()
@@ -121,6 +120,9 @@ def restart_scheduler(do_every: int = 180):
 def check_servers():
     global continues
     taskModel = TaskModel.objects.all().last()
+    if taskModel is None:
+        TaskModel(active=True).save()
+        taskModel = TaskModel.objects.all().last()
     if not taskModel.active:
         continues.set()
         continues = None
