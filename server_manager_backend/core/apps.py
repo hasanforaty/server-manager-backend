@@ -1,5 +1,6 @@
 import os
 
+import schedule
 from django.apps import AppConfig
 
 

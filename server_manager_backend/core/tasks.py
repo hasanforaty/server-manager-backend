@@ -7,11 +7,12 @@ import schedule
 from django.db import connections, OperationalError
 from django.db.models import QuerySet
 from schedule import Scheduler
+
 from core.closable_connection_thread import ConnectionThread
 
 from backup.models import FolderBackup
 from backup.serializers import BackupSerializer
-from core.models import CacheModel
+from core.models import CacheModel, TaskModel
 from core.serializers import CacheModelSerializer
 from helper import check
 from helper.check import StatusResult
@@ -54,19 +55,21 @@ def run_continuously(self, interval=1):
 
 
 Scheduler.run_continuously = run_continuously
-_job: schedule.Job
-_scheduler: Scheduler
-_action_jobs = dict()
-_backup_jobs: schedule.Job
+job: schedule.Job = None
+_do_thread: ConnectionThread
+scheduler: Scheduler = None
+continues = None
+action_jobs = dict()
+backup_jobs: schedule.Job
 
 
-def start_scheduler(do_every: int = 4):
+def start_scheduler(do_every: int = 180, do_while: bool = True):
     """
     Starts a scheduler to do the server's task
     :param do_every: do the task every N seconds
     :return: None
     """
-    global _job, _scheduler
+    global job, scheduler, continues
     # check_server = check.CheckServer(
     #     host=host,
     #     port=port,
@@ -75,58 +78,76 @@ def start_scheduler(do_every: int = 4):
     # )
     # check_server.check_server()
     developMode = False
+    if continues is not None:
+        """closing opened connections """
+        continues.set()
     if not developMode:
-        _scheduler = Scheduler()
-        _job = _scheduler.every(do_every).seconds.do(check_servers)
-        _scheduler.run_continuously()
+        TaskModel(active=True).save()
+        scheduler = Scheduler()
+        job = scheduler.every(do_every).seconds.do(check_servers)
+        continues = scheduler.run_continuously()
+        # if do_while:
+        #     _do_thread = ConnectionThread(target=check_servers)
+        #     _do_thread.start()
         start_backup_scheduler()
 
 
+# def test_function():
+#     taskModel = TaskModel.objects.all().last()
+#     if not taskModel.active:
+#         continues.set()
+#     else:
+#         print('test_function')
+#     print(continues)
+
+
 def start_backup_scheduler(hours: str = '21', minutes: str = '00'):
-    global _backup_jobs
-    _backup_jobs = _scheduler.every().day.at(f'{hours}:{minutes}', "Iran").do(do_backup_scheduler)
+    global backup_jobs
+    backup_jobs = scheduler.every().day.at(f'{hours}:{minutes}', "Iran").do(do_backup_scheduler)
 
 
 def stop_scheduler():
-    global _job, _scheduler
-    if _job is not None and _scheduler is not None:
-        _scheduler.cancel_job(_job)
-        _job = None
-    else:
-        raise Exception("Scheduler not running")
+    # schedule.clear()
+    TaskModel(active=False).save()
 
 
-def restart_scheduler(do_every: int = 4):
+def restart_scheduler(do_every: int = 180):
+    stop_scheduler()
     for conn in connections.all():
         conn.close()
-    stop_scheduler()
     start_scheduler(do_every=do_every)
 
 
 def check_servers():
-    try:
-        print('start checking ............ ', datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-        cashed = get_or_create_cache()
-        threads = []
-        servers = ServerSerializer(Server.objects.all(), many=True).data
-        get_or_create_cache().lastServer.clear()
-        for value in servers:
-            get_or_create_cache().lastServer.append(value)
-            if value['active']:
-                thread = ConnectionThread(target=check_server, args=(value['id'],))
-                threads.append(thread)
-                thread.start()
+    global continues
+    taskModel = TaskModel.objects.all().last()
+    if not taskModel.active:
+        continues.set()
+        continues = None
+    else:
+        try:
+            print('start checking ............ ', datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+            cashed = get_or_create_cache()
+            threads = []
+            servers = ServerSerializer(Server.objects.all(), many=True).data
+            get_or_create_cache().lastServer.clear()
+            for value in servers:
+                get_or_create_cache().lastServer.append(value)
+                if value['active']:
+                    thread = ConnectionThread(target=check_server, args=(value['id'],))
+                    threads.append(thread)
+                    thread.start()
 
-        for thread in threads:
-            thread.join(timeout=5)
-        print('start creating summary ............ ', datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-        cashed.save_summary()
-        cashed.clear_cache()
-        print('end creating summary ............ ', datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-        print('end checking ............ ', datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-    except Exception as e:
-        print("restart Scheduler")
-        restart_scheduler()
+            for thread in threads:
+                thread.join(timeout=5)
+            print('start creating summary ............ ', datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+            cashed.save_summary()
+            cashed.clear_cache()
+            print('end creating summary ............ ', datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+            print('end checking ............ ', datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        except Exception as e:
+            print("restart Scheduler")
+            restart_scheduler()
 
 
 def trimActionsJob(actions: QuerySet[Action], server_id):
@@ -139,14 +160,14 @@ def trimActionsJob(actions: QuerySet[Action], server_id):
     """
     static_part = "_{}_".format(server_id)
     servers_key = dict()
-    for ke in _action_jobs.keys():
+    for ke in action_jobs.keys():
         if static_part in ke:
-            servers_key[ke] = _action_jobs[ke]
+            servers_key[ke] = action_jobs[ke]
     for key in servers_key.keys():
         actionId = key.split('_')[0]
         if not actions.filter(id=actionId).exists():
-            oldJob = _action_jobs.pop(key)
-            _scheduler.cancel_job(oldJob)
+            oldJob = action_jobs.pop(key)
+            scheduler.cancel_job(oldJob)
 
 
 def check_server(server_id):
@@ -303,20 +324,20 @@ def check_server_info(server_id):
 
 
 def create_get_action_job(action_id, server_id, interval):
-    global _action_jobs, _scheduler
+    global action_jobs, scheduler
     key = "{}_{}_{}".format(action_id, server_id, str(interval))
-    job = _action_jobs.get(key, None)
+    job = action_jobs.get(key, None)
 
     if job is None:
         # check to see if an interval has changes
         static_part = "{}_{}_".format(action_id, server_id)
-        for ke in _action_jobs.keys():
+        for ke in action_jobs.keys():
             if static_part in ke:
-                old_job = _action_jobs.pop(ke)
-                _scheduler.cancel_job(old_job)
+                old_job = action_jobs.pop(ke)
+                scheduler.cancel_job(old_job)
                 break
-        job = _scheduler.every(interval).seconds.do(do_action, action_id, server_id)
-        _action_jobs[key] = job
+        job = scheduler.every(interval).seconds.do(do_action, action_id, server_id)
+        action_jobs[key] = job
     return job
 
 
