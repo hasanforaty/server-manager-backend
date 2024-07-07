@@ -6,6 +6,8 @@ from channels.exceptions import StopConsumer
 from channels.generic.websocket import AsyncWebsocketConsumer
 
 from core.models import CacheModel
+from server.models import Server, Service, DBService
+from history.models import ServerInfo, ServiceHistory
 
 
 class ServerSummeryConsumer(AsyncWebsocketConsumer):
@@ -14,10 +16,10 @@ class ServerSummeryConsumer(AsyncWebsocketConsumer):
         await self.accept()
         while int(1) in [1]:
             try:
-                summery_list = await sync_to_async(CacheModel.objects.all().order_by('-created_at').first)()
+                summery_list = await sync_to_async(get_summery)()
 
                 if summery_list:
-                    my_json: dict = summery_list.json
+                    my_json: dict = summery_list
                     my_response = []
 
                     # servers = lastServer
@@ -33,6 +35,8 @@ class ServerSummeryConsumer(AsyncWebsocketConsumer):
                         my_response.append(my_json.get(key))
                     # my_response.sort(key=lambda summery: summery['id'])
                     # print('my_response : ', my_response)
+                    # print('emit : ...... ')
+                    # print(my_response)
                     await self.send(text_data=json.dumps(my_response))
                     # Random.objects.create(text="test")
                     await asyncio.sleep(1)
@@ -57,6 +61,7 @@ class ServerSummeryConsumer(AsyncWebsocketConsumer):
         )
         raise StopConsumer()
 
+
 # @sync_to_async
 # def printInfo():
 #     print('lastServer', lastServer)
@@ -65,104 +70,90 @@ class ServerSummeryConsumer(AsyncWebsocketConsumer):
 #     print('lastDB', lastDB)
 #     print('lastDBHistory', lastDBHistory)
 
-
-# def get_server_summery(server_id, summery_list):
-#     summery = dict()
-#     summery['id'] = str(server_id)
-#     """
-#      config:{
-#         id:1,
-#         hostName:'همدان',
-#         host:'host.com',
-#         port:2020,
-#         username:'hasan',
-#         password:'1234',
-#       },
-#     """
-#     info = lastServerInfo[str(server_id)]
-#     """
-#      info: {
-#         id:1,
-#         server : 'همدان',
-#         ram : 80,
-#         memory : 75,
-#         cpu:50,
-#         status:[
-#           {
-#             name:'Server',
-#             status:'green',
-#           },
-#           {
-#             name:'Db',
-#             status:'red',
-#           },
-#         ],
-#         lastUpdate:"11/11/2020",
-#         lastBackup:null,
-#       }
-#     """
-#     if info is not None:
-#         server = info['server']
-#         summery['config'] = {
-#             'id': str(server_id),
-#             'hostName': server['name'],
-#             'host': server['host'],
-#             'port': server['port'],
-#             'username': server['username'],
-#             'password': server['password'],
-#         }
-#         lastUpdate = info["created_at"].strftime('%Y/%m/%d %H:%M:%S')
-#         summery['info'] = {
-#             'id': str(info['id']),
-#             'server': info['server']['name'],
-#             'ram': info['ram'],
-#             'memory': info['memory'],
-#             'cpu': info['cpu'],
-#             'lastUpdate': lastUpdate,
-#             'lastBackup': None,
-#             'status': []
-#         }
-#     services = lastService[str(server_id)]
-#     databases = lastDB[str(server_id)]
-#     service_convertor = []
-#     for service in services:
-#         service_convertor.append({
-#             'id': str(service['id']),
-#             'type': 'سرور',
-#             'serviceName': service['name'],
-#             'command': service['command'],
-#             'contain': service['contain'],
-#         })
-#         history = lastServiceHistory[str(service['id'])]
-#         if history is not None:
-#             if history['status']:
-#                 status = 'green'
-#             else:
-#                 status = 'red'
-#             summery['info'].get('status').append({
-#                 'name': service['name'],
-#                 'status': status
-#             })
-#     for database in databases:
-#         service_convertor.append({
-#             'id': str(database['id']),
-#             'type': 'دیتابیس',
-#             'serviceName': database['name'],
-#             'username': database['username'],
-#             'password': database['password'],
-#             'host': database['host'],
-#             'port': database['port']
-#         })
-#         history = lastDBHistory[str(database['id'])]
-#         if history is not None:
-#             if history['status']:
-#                 status = 'green'
-#             else:
-#                 status = 'red'
-#             summery['info'].get('status').append({
-#                 'name': database['name'],
-#                 'status': status
-#             })
-#
-#     summery['services'] = service_convertor
-#     summery_list.append(summery)
+def get_summery():
+    summery_list = dict()
+    servers = Server.objects.all()
+    for server in servers:
+        summery = dict()
+        summery['id'] = str(server.id)
+        history: ServerInfo = ServerInfo.objects.filter(server=server).order_by('created_at').last()
+        summery['config'] = {
+            'id': str(server.id),
+            'name': server.name,
+            'host': server.host,
+            'port': server.port,
+            'username': server.username,
+            'password': server.password,
+            'active': server.active,
+        }
+        log = ''
+        if len(server.log) != 0 or server.log != "None":
+            log = server.log
+        if history is not None:
+            summery['info'] = {
+                'id': str(history.id),
+                'server': server.name,
+                'ram': history.ram,
+                'memory': history.memory,
+                'cpu': history.cpu,
+                'lastUpdate': str(history.created_at),
+                'lastBackup': None,
+                'status': [],
+                'log': log
+            }
+        else:
+            summery['info'] = {
+                'id': '',
+                'server': server.name,
+                'ram': 0,
+                'memory': 0,
+                'cpu': 0,
+                'lastUpdate': '',
+                'lastBackup': None,
+                'status': [],
+                'log': log
+            }
+        services = Service.objects.all().filter(server=server)
+        service_convertor = []
+        for service in services:
+            service_convertor.append({
+                'id': str(service.id),
+                'type': 'سرور',
+                'serviceName': service.serviceName,
+                'command': service.command,
+                'contain': service.contain,
+            })
+            history: ServiceHistory = ServiceHistory.objects.filter(service=service).order_by('created_at').last()
+            if history is not None:
+                if history.status:
+                    status = 'green'
+                else:
+                    status = 'red'
+                summery['info'].get('status').append({
+                    'name': service.serviceName,
+                    'status': status
+                })
+        databases = DBService.objects.all().filter(server=server)
+        for database in databases:
+            service_convertor.append({
+                'id': str(database.id),
+                'type': 'دیتابیس',
+                'serviceName': database.serviceName,
+                'username': database.username,
+                'password': database.password,
+                'host': database.host,
+                'port': database.port
+            })
+            history: ServiceHistory = ServiceHistory.objects.filter(serviceDB=database).last()
+            if history is not None:
+                if history.status:
+                    status = 'green'
+                else:
+                    status = 'red'
+                summery['info'].get('status').append({
+                    'name': database.serviceName,
+                    'status': status
+                })
+        summery['services'] = service_convertor
+        summery_list[str(server.id)] = summery
+    return summery_list

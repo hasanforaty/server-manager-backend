@@ -16,7 +16,7 @@ class ServerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Server
-        fields = ('id', 'name', 'host', 'port', 'username', 'password', 'actions')
+        fields = ('id', 'name', 'host', 'port', 'username', 'password', 'actions', 'active')
         read_only_fields = ['id', 'actions']
 
     def addOrCreateAction(self, instance, actions):

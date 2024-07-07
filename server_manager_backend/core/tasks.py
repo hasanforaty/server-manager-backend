@@ -112,9 +112,10 @@ def check_servers():
         get_or_create_cache().lastServer.clear()
         for value in servers:
             get_or_create_cache().lastServer.append(value)
-            thread = ConnectionThread(target=check_server, args=(value['id'],))
-            threads.append(thread)
-            thread.start()
+            if value['active']:
+                thread = ConnectionThread(target=check_server, args=(value['id'],))
+                threads.append(thread)
+                thread.start()
 
         for thread in threads:
             thread.join(timeout=5)
@@ -161,6 +162,11 @@ def check_server(server_id):
         )
         status = checked_server.check_server()
         get_or_create_cache().serverStatus[str(server_id)] = status
+        logg = status.message + '' + str(status.exception)
+        if logg == 'None':
+            logg = ''
+        server.log = logg
+        server.save()
         if status.status:
             # s_thread = threading.Thread(target=check_server_info, args=(server_id,))
             check_server_info(server_id)
@@ -567,6 +573,7 @@ class CashLastData:
                     'port': server['port'],
                     'username': server['username'],
                     'password': server['password'],
+                    'active': server['active'],
                 }
                 lastUpdate = info["created_at"]
                 summery['info'] = {
@@ -631,9 +638,9 @@ class CashLastData:
             server_status = self.serverStatus.get(str(server_id), None)
             if server_status is None:
                 server_status = StatusResult(status=True)
-            if summery_list.get(server_id, None) is None:
-                for server in self.lastServer:
-                    if server['id'] == str(server_id):
+            for server in self.lastServer:
+                if server['id'] == str(server_id):
+                    if summery_list.get(server_id, None) is None:
                         summery['id'] = str(server_id)
                         summery['config'] = {
                             'id': str(server_id),
@@ -642,7 +649,9 @@ class CashLastData:
                             'port': server['port'],
                             'username': server['username'],
                             'password': server['password'],
+                            'active': server['active'],
                         }
+                        print('config : ', summery)
                         summery['info'] = {
                             'id': '',
                             'server': server['name'],
@@ -656,12 +665,13 @@ class CashLastData:
                         }
                         summery_list[server_id] = summery
                         return summery
-            else:
-                try:
-                    summery_list.get(server_id)['info']['log'] = server_status.message + ' ' + str(
-                        server_status.exception)
-                except Exception as e:
-                    print('in summery', e)
+                    else:
+                        try:
+                            summery_list.get(server_id)['info']['log'] = server_status.message + ' ' + str(
+                                server_status.exception)
+                            summery_list.get(server_id)['config']['active'] = server['active']
+                        except Exception as e:
+                            print('in summery', e)
 
     def get_summaries(self, oldSummery: dict):
         summaries = dict()

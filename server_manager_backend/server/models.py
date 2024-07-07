@@ -11,6 +11,8 @@ class Server(models.Model):
     username = models.CharField(max_length=255)
     password = models.CharField(max_length=255)
     actions = models.ManyToManyField('Action', blank=True, related_name='servers')
+    active = models.BooleanField(default=True)
+    log = models.TextField(default='')
 
     def __str__(self):
         return self.name + " - " + self.host + " - " + self.username

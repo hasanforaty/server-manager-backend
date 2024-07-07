@@ -10,6 +10,7 @@ host: connection
 """
 _connections = dict()
 _connections_time = dict()
+_jobs = dict()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
