@@ -1,3 +1,5 @@
+import threading
+
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -48,7 +50,8 @@ class CheckNow(APIView):
         try:
             if not TaskModel.objects.all().last().active:
                 TaskModel(active=True).save()
-            check_servers()
+            threading.Thread(target=check_servers).start()
+
             return Response({'message': 'Scheduler run successfully.'}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
