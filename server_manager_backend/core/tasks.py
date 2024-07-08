@@ -277,7 +277,8 @@ def check_db(db_id):
     checked = checked_server.check_database(
         database_name=db_serializer['serviceName'],
         username=db_serializer['username'],
-        password=db_serializer['password']
+        password=db_serializer['password'],
+        type=db_serializer['type']
     )
 
     data = {
@@ -469,6 +470,7 @@ def backup_database(db_id):
         database_host=db.host,
         database_port=db.port,
         dbPath=db.backupPath,
+        type=db.type,
     )
     serializer = BackupHistorySerializer(
         data={

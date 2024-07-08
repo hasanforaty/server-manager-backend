@@ -89,26 +89,30 @@ class CheckServer:
             logger.error("Operation error: %s", ex)
             return StatusResult(status=False, message="Operation error", exception=ex)
 
-    def check_database(self, database_name, username, password):
+    def check_database(self, database_name, username, password, type:str):
         sql = "select * from information_schema.tables  limit 1000"
         try:
-            with SSHTunnelForwarder(
-                    (self.host, self.port),
-                    ssh_username=self.username,
-                    ssh_password=self.password,
-                    remote_bind_address=('localhost', 5432)
-            ) as server:
-                conn = db.connect(host='localhost',
-                                  port=server.local_bind_port,
-                                  user=username,
-                                  password=password,
-                                  dbname=database_name)
-                pd.read_sql_query(sql, conn)
-                return {
-                    'success': True,
-                    'log': '',
-                    'date': datetime.datetime.now()
-                }
+            if type.lower() == 'mysql':
+                result = self.checkByCommand('service mysql status','Active: active')
+                return result
+            else:
+                with SSHTunnelForwarder(
+                        (self.host, self.port),
+                        ssh_username=self.username,
+                        ssh_password=self.password,
+                        remote_bind_address=('localhost', 5432)
+                ) as server:
+                    conn = db.connect(host='localhost',
+                                      port=server.local_bind_port,
+                                      user=username,
+                                      password=password,
+                                      dbname=database_name)
+                    pd.read_sql_query(sql, conn)
+                    return {
+                        'success': True,
+                        'log': '',
+                        'date': datetime.datetime.now()
+                    }
         except BaseException as ex:
             return {
                 'success': False,
@@ -254,7 +258,7 @@ class CheckServer:
     #             return True
     #     except BaseException as ex:
     #         return False
-    def backup_database(self, database_name, database_password, database_user, database_host, database_port, dbPath):
+    def backup_database(self, database_name, database_password, database_user, database_host, database_port, dbPath, type:str):
         client = ca.getOrCreateConnection(self.host, port=self.port, username=self.username, password=self.password)
         connection = client.invoke_shell()
         channel_data = ''
@@ -282,10 +286,19 @@ class CheckServer:
                         go_to_directory = True
                         connection.send(f'mkdir -p {directory} && cd $_ \n')
                     else:
-                        send_command = True
-                        connection.send(
-                            f"pg_dump -h {database_host} -d {database_name} -U {database_user} -p {database_port} -f backup_{database_name}.sql \n")
+                        if type.lower() == 'mysql':
+                            connection.send(
+                                f"mysqldump -P {database_port} -h {database_host} -u {database_user} --max_allowed_packet=512M --ignore-table=DB.TABLE --events --routines --triggers --single-transaction --quick --lock-tables=false --force -p {database_name} > backup_{database_name}.sql \n"
+                            )
+                        else:
+                            send_command = True
+                            connection.send(
+                                f"pg_dump -h {database_host} -d {database_name} -U {database_user} -p {database_port} -f backup_{database_name}.sql \n")
                 elif channel_data.endswith("Password: '"):
+                    connection.send(f'{database_password}\n')
+                    send_pass = True
+                    continue
+                elif channel_data.endswith("Enter password: '"):
                     connection.send(f'{database_password}\n')
                     send_pass = True
                     continue
