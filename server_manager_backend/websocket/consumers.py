@@ -5,9 +5,8 @@ from asgiref.sync import sync_to_async, async_to_sync
 from channels.exceptions import StopConsumer
 from channels.generic.websocket import AsyncWebsocketConsumer
 
-from core.models import CacheModel
-from server.models import Server, Service, DBService
 from history.models import ServerInfo, ServiceHistory
+from server.models import Server, Service, DBService
 
 
 class ServerSummeryConsumer(AsyncWebsocketConsumer):
@@ -133,6 +132,13 @@ def get_summery():
                     'name': service.serviceName,
                     'status': status
                 })
+            else:
+                status = 'red'
+                summery['info'].get('status').append({
+                    'name': service.serviceName,
+                    'status': status
+                })
+
         databases = DBService.objects.all().filter(server=server)
         for database in databases:
             service_convertor.append({
@@ -150,6 +156,12 @@ def get_summery():
                     status = 'green'
                 else:
                     status = 'red'
+                summery['info'].get('status').append({
+                    'name': database.serviceName,
+                    'status': status
+                })
+            else:
+                status = 'red'
                 summery['info'].get('status').append({
                     'name': database.serviceName,
                     'status': status

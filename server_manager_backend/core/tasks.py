@@ -77,7 +77,7 @@ def start_scheduler(do_every: int = 180, do_while: bool = True):
     #     password=password
     # )
     # check_server.check_server()
-    developMode = False
+    developMode = True
     if continues is not None:
         """closing opened connections """
         continues.set()

@@ -40,6 +40,7 @@ class DBService(models.Model):
     password = models.CharField(max_length=255)
     backup = models.BooleanField()
     backupPath = models.TextField(default='SM/backup')
+    type = models.CharField(choices=[('mysql', 'MySql'), ('postgres', 'Postgres')], default='postgres',max_length=255)
 
     def __str__(self):
         return self.id + " - " + self.dbName + " - " + self.host + " - " + self.username + " - " + self.backup

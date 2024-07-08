@@ -167,10 +167,12 @@ class DBServiceViewSet(
         else:
             return DBServiceSerializer(*args, **kwargs)
 
+
 @extend_schema_view(
     post=extend_schema(
         description="Upload an Excel file to create multiple Server entries.",
-        request={"multipart/form-data": {"type": "object", "properties": {"file": {"type": "string", "format": "binary"}}}},
+        request={
+            "multipart/form-data": {"type": "object", "properties": {"file": {"type": "string", "format": "binary"}}}},
         responses={
             201: OpenApiResponse(description="Servers created successfully."),
             400: OpenApiResponse(description="Bad request."),
@@ -217,3 +219,42 @@ class ServerUploadView(APIView):
             return Response({"errors": errors}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({"message": "Servers created successfully"}, status=status.HTTP_201_CREATED)
+
+
+class ServiceUploadView(APIView):
+    def post(self, request, *args, **kwargs):
+        file = request.FILES.get('file')
+        if not file:
+            return Response({"error": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            df = pd.read_excel(file)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        servers = Server.objects.all()
+        errors = []
+        for index, row in df.iterrows():
+            service_data = {
+                "username": row.get("user"),
+                "password": row.get("password"),
+                "port": row.get("port"),
+                "host": row.get("ip"),
+                "type": row.get("service"),
+                "dbName": row.get("database"),
+                "serviceName": row.get("database"),
+                "backup": False,
+            }
+            for server in servers:
+                service_data["server"] = server.id
+                serializer = DBServiceSerializer(data=service_data)
+                do_exist = DBService.objects.filter(id=server.id, dbName=service_data['dbName']).first() is None
+                if not do_exist:
+                    if serializer.is_valid():
+                        serializer.save()
+                    else:
+                        errors.append({index: serializer.errors})
+
+        if errors:
+            return Response({"errors": errors}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"message": "Services created successfully"}, status=status.HTTP_201_CREATED)
