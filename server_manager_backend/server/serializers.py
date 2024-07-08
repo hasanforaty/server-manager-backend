@@ -49,12 +49,12 @@ class ServerSerializer(serializers.ModelSerializer):
 #         read_only_fields = ['id']
 
 class ActionSerializer(serializers.ModelSerializer):
-    servers = serializers.PrimaryKeyRelatedField(many=True, queryset=Server.objects.all())
+    servers = serializers.PrimaryKeyRelatedField(many=True, queryset=Server.objects.all(), default=[])
 
     class Meta:
         model = Action
         fields = ['id', 'name', 'command', 'description', 'interval', 'servers']
-        read_only_fields = ['id']
+        read_only_fields = ['id', ]
 
     def update(self, instance, validated_data):
         servers_data = validated_data.pop('servers', None)
@@ -63,8 +63,7 @@ class ActionSerializer(serializers.ModelSerializer):
         if servers_data is not None:
             instance.servers.clear()
             for server_data in servers_data:
-                server, created = Server.objects.get_or_create(server_data)
-                instance.servers.add(server)
+                instance.servers.add(server_data)
         # print('validated ', validated_data)
         for att, value in validated_data.items():
             # print('set instance', att, ' ', value, ' ', validated_data)
