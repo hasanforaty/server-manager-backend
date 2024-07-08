@@ -63,7 +63,7 @@ action_jobs = dict()
 backup_jobs: schedule.Job
 
 
-def start_scheduler(do_every: int = 180, do_while: bool = True):
+def start_scheduler(do_every: int = 300, do_while: bool = True):
     """
     Starts a scheduler to do the server's task
     :param do_every: do the task every N seconds
@@ -77,7 +77,7 @@ def start_scheduler(do_every: int = 180, do_while: bool = True):
     #     password=password
     # )
     # check_server.check_server()
-    developMode = True
+    developMode = False
     if continues is not None:
         """closing opened connections """
         continues.set()
@@ -110,7 +110,7 @@ def stop_scheduler():
     TaskModel(active=False).save()
 
 
-def restart_scheduler(do_every: int = 180):
+def restart_scheduler(do_every: int = 300):
     stop_scheduler()
     for conn in connections.all():
         conn.close()
