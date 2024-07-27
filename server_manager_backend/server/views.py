@@ -248,7 +248,7 @@ class ServiceUploadView(APIView):
                 service_data["server"] = server.id
                 serializer = DBServiceSerializer(data=service_data)
                 do_exist = DBService.objects.filter(id=server.id, dbName=service_data['dbName']).first() is None
-                if not do_exist:
+                if do_exist:
                     if serializer.is_valid():
                         serializer.save()
                     else:

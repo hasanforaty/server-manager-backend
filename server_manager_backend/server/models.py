@@ -43,7 +43,7 @@ class DBService(models.Model):
     type = models.CharField(choices=[('mysql', 'MySql'), ('postgres', 'Postgres')], default='postgres',max_length=255)
 
     def __str__(self):
-        return self.id + " - " + self.dbName + " - " + self.host + " - " + self.username + " - " + self.backup
+        return str(self.id) + " - " + self.dbName + " - " + self.host + " - " + self.username + " - "
 
 
 class Action(models.Model):
