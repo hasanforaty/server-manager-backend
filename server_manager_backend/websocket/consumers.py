@@ -1,6 +1,7 @@
 import json
 import asyncio
 import concurrent.futures
+import logging
 
 from asgiref.sync import sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
@@ -8,27 +9,49 @@ from channels.exceptions import StopConsumer
 from history.models import ServerInfo, ServiceHistory
 from server.models import Server, Service, DBService
 
+logger = logging.getLogger(__name__)
+connected_clients = set()
+
 
 class ServerSummeryConsumer(AsyncWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.latest_summary = None  # Cache to store the latest summary
-
-    async def connect(self):
-        print('WebSocket connect called')
-        await self.accept()
-        print('WebSocket connection accepted')
-        await self.send(text_data=json.dumps({}))
+        print('init .............')
         self.loop_task = asyncio.create_task(self.periodic_update())
 
+    # async def connect(self):
+    #     print('WebSocket connect called')
+    #     await self.accept()
+    #     print('WebSocket connection accepted')
+    #     await self.send(text_data=json.dumps({}))
+    #     self.loop_task = asyncio.create_task(self.periodic_update())
+    #
+    # async def disconnect(self, close_code):
+    #     print(f'WebSocket disconnect called with close code: {close_code}')
+    #     if hasattr(self, 'loop_task'):
+    #         self.loop_task.cancel()
+    #     print('WebSocket connection closed')
+    #     raise StopConsumer()
+
+    async def connect(self):
+        logger.info('WebSocket connect called')
+        await self.accept()
+        connected_clients.add(self)
+        logger.info('WebSocket connection accepted')
+
     async def disconnect(self, close_code):
-        print(f'WebSocket disconnect called with close code: {close_code}')
-        if hasattr(self, 'loop_task'):
-            self.loop_task.cancel()
-        print('WebSocket connection closed')
+        logger.info(f'WebSocket disconnect called with close code: {close_code}')
+        connected_clients.remove(self)
+        logger.info('WebSocket connection closed')
         raise StopConsumer()
 
+    async def receive(self, text_data):
+        # Handle incoming messages if needed
+        pass
+
     async def periodic_update(self):
+        await asyncio.sleep(20)
         while True:
             try:
                 print('WebSocket try to get summery')
@@ -40,9 +63,10 @@ class ServerSummeryConsumer(AsyncWebsocketConsumer):
                     if my_response != self.latest_summary:
                         self.latest_summary = my_response
                         dump = json.dumps(my_response)
-                        print('dump : ')
-                        await self.send(text_data=dump)
-                await asyncio.sleep(1)
+                        logger.info('Broadcasting summary to all connected clients')
+                        for client in connected_clients:
+                            await client.send(text_data=dump)
+                await asyncio.sleep(5)
             except Exception as e:
                 print(f"Error in WebSocket update loop: {e}")
                 await asyncio.sleep(4)
