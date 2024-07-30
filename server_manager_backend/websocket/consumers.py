@@ -17,31 +17,7 @@ connected_clients = set()
 class ServerSummeryConsumer(AsyncWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # self.latest_summary = None  # Cache to store the latest summary
-        # print('init .............')
-        # self.loop_task = asyncio.create_task(self.periodic_update())
 
-    # async def connect(self):
-    #     print('WebSocket connect called')
-    #     await self.accept()
-    #     print('WebSocket connection accepted')
-    #     await self.send(text_data=json.dumps({}))
-    #     self.loop_task = asyncio.create_task(self.periodic_update())
-    #
-    # async def disconnect(self, close_code):
-    #     print(f'WebSocket disconnect called with close code: {close_code}')
-    #     if hasattr(self, 'loop_task'):
-    #         self.loop_task.cancel()
-    #     print('WebSocket connection closed')
-    #     raise StopConsumer()
-
-    # async def connect(self):
-    #     logger.info('WebSocket connect called')
-    #     await self.accept()
-    #     sync_to_async()
-    #     connected_clients.add(self)
-    #
-    #     logger.info('WebSocket connection accepted')
     async def connect(self):
 
         await self.accept()
@@ -51,25 +27,10 @@ class ServerSummeryConsumer(AsyncWebsocketConsumer):
                 if summery_list:
                     my_json: dict = summery_list
                     my_response = []
-
-                    # servers = lastServer
-                    # for server in servers:
-                    #     get_server_summery(server_id=server['id'], summery_list=summery_list)
-                    # #     thread = threading.Thread(target=get_server_summery, args=(server.id, summery_list))
-                    # #     threads.append(thread)
-                    # #     thread.start()
-                    # #
-                    # # for thread in threads:
-                    # #     thread.join()
                     for key in my_json.keys():
                         my_response.append(my_json.get(key))
-                    # my_response.sort(key=lambda summery: summery['id'])
-                    # print('my_response : ', my_response)
-                    # print('emit : ...... ')
-                    # print(my_response)
                     await self.send(text_data=json.dumps(my_response))
-                    # Random.objects.create(text="test")
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(3)
                 else:
                     await asyncio.sleep(2)
             except Exception as e:
@@ -79,9 +40,6 @@ class ServerSummeryConsumer(AsyncWebsocketConsumer):
         await self.close()
 
     async def disconnect(self, close_code):
-        logger.info(f'WebSocket disconnect called with close code: {close_code}')
-        connected_clients.remove(self)
-        logger.info('WebSocket connection closed')
         raise StopConsumer()
 
     async def receive(self, text_data):
@@ -212,5 +170,4 @@ def _get_summery():
 
 def get_summery():
     model = CacheModel.objects.all().last()
-    print('data : ', model.created_at)
     return model.json
