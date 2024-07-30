@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'backup',
     'core',
     'channels',
+    'websocket'
 ]
 
 MIDDLEWARE = [
