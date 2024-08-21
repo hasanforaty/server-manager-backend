@@ -369,7 +369,8 @@ class CheckServer:
         name = list[len(list) - 1]
         output = ''
         dic_name = name + '_' + datetime.datetime.now().strftime("%Y_%m_%d_%H:%M")
-        stdin, stdout, stderr = connection.exec_command("cp -v -r {} {}/{}".format(path, to, dic_name))
+        stdin, stdout, stderr = connection.exec_command(
+            "7z a -t7z -m0=lzma2 -mx=9 {}/{}.7z {}".format(to, dic_name, path))
         for line in stdout:
             output += line
         re = False
